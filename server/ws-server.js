@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { WebSocketServer } from 'ws';
 
-const PORT = process.env.PORT_WS || 3000;
+const PORT = process.env.PORT_WS || 3001;
 
 const wss = new WebSocketServer({ port: Number(PORT) });
 
