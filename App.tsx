@@ -234,7 +234,9 @@ const App: React.FC = () => {
 
     // broadcast submission so host / other clients see it
     try {
-      wsClientRef.current?.send({ type: 'submission:new', payload: { lobbyCode: game.lobbyCode, submission: newSub } });
+      const payload = { lobbyCode: game.lobbyCode, submission: newSub };
+      console.log('WS out -> submission:new', payload);
+      wsClientRef.current?.send({ type: 'submission:new', payload });
     } catch (e) {
       console.warn('failed to broadcast submission', e);
     }

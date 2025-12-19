@@ -55,10 +55,10 @@ wss.on('connection', (ws, req) => {
     } catch (e) {
       // keep raw
     }
-
     // Expect messages with a `type` and `payload`.
     const type = parsed && parsed.type;
     const payload = parsed && parsed.payload;
+    console.log('WS in <-', { from: addr, type, payload });
     if (!type) return;
 
     try {
