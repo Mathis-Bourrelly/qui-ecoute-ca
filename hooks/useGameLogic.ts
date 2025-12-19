@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Submission, GameState, UserRole, Vote } from '../types';
 import { extractVideoId, extractTimecode, shuffleArray, generateLobbyCode, createWebSocketClient, WSMessage } from '../utils';
 
@@ -29,22 +29,27 @@ export const useGameLogic = () => {
   const wsClientRef = useRef<ReturnType<typeof createWebSocketClient> | null>(null);
   const gameRef = useRef<GameState>(game);
 
-  useEffect(() => { gameRef.current = game; }, [game]);
+  // Synchronisation de la ref pour l'utiliser dans les callbacks WebSocket (évite le stale closure)
+  useEffect(() => {
+    gameRef.current = game;
+  }, [game]);
 
-  // WebSocket Logic
+  // Initialisation du WebSocket
   useEffect(() => {
     wsClientRef.current = createWebSocketClient({
       onMessage: (msg: WSMessage) => {
         try {
           if (!msg || !msg.type) return;
+
           const currentLobby = (gameRef.current?.lobbyCode || '').toString().trim().toUpperCase();
 
           switch (msg.type) {
             case 'game:update':
             case 'game:start':
-              setGame(msg.payload as GameState);
+              if (msg.payload) setGame(msg.payload as GameState);
               break;
-            case 'participant:joined':
+
+            case 'participant:joined': {
               const { name, lobbyCode } = msg.payload as any;
               if (lobbyCode?.toUpperCase() !== currentLobby) return;
               setGame(prev => ({
@@ -52,40 +57,73 @@ export const useGameLogic = () => {
                 participants: Array.from(new Set([...(prev.participants || []), name]))
               }));
               break;
-            case 'submission:new':
+            }
+
+            case 'submission:new': {
               const { submission: sub, lobbyCode: subLobby } = msg.payload as any;
               if (subLobby?.toUpperCase() !== currentLobby) return;
-              setSubmissions(prev => prev.some(s => s.id === sub.id) ? prev : [...prev, sub]);
+              setSubmissions(prev => {
+                if (prev.some(s => s.id === sub.id)) return prev;
+                return [...prev, sub];
+              });
+              // Ajouter aussi le participant s'il n'est pas là
+              setGame(prev => ({
+                ...prev,
+                participants: Array.from(new Set([...(prev.participants || []), sub.senderName]))
+              }));
               break;
-            case 'vote:new':
+            }
+
+            case 'vote:new': {
               const { vote, trackIndex, lobbyCode: vLobby } = msg.payload as any;
               if (vLobby?.toUpperCase() !== currentLobby) return;
+              
               setGame(prev => {
-                const existing = prev.votes[trackIndex] || [];
+                const idx = Number(trackIndex); // Sécurité type
+                const existing = prev.votes[idx] || [];
                 if (existing.some(v => v.voterName === vote.voterName)) return prev;
-                return { ...prev, votes: { ...prev.votes, [trackIndex]: [...existing, vote] } };
+                return { 
+                  ...prev, 
+                  votes: { ...prev.votes, [idx]: [...existing, vote] } 
+                };
               });
               break;
-            case 'track:next':
-              setGame(prev => ({ ...prev, currentTrackIndex: (msg.payload as any).newIndex }));
+            }
+
+            case 'track:next': {
+              const { newIndex, lobbyCode: nLobby } = msg.payload as any;
+              if (nLobby?.toUpperCase() !== currentLobby) return;
+              setGame(prev => ({ ...prev, currentTrackIndex: newIndex }));
               break;
+            }
           }
-        } catch (e) { console.warn('WS error', e); }
+        } catch (e) {
+          console.warn('Erreur lors du traitement du message WS:', e);
+        }
       }
     });
+
     return () => wsClientRef.current?.close();
   }, []);
 
-  // Sync LocalStorage
+  // Persistance LocalStorage
   useEffect(() => {
     localStorage.setItem('qui_ecoute_ca_data', JSON.stringify(submissions));
     localStorage.setItem('qui_ecoute_ca_game', JSON.stringify(game));
   }, [submissions, game]);
 
-  // Handlers
+  // Actions
   const handleCreateGame = () => {
     const newCode = generateLobbyCode();
-    const newGame: GameState = { ...game, status: 'setup', lobbyCode: newCode, participants: [], votes: {} };
+    const newGame: GameState = { 
+      status: 'setup', 
+      lobbyCode: newCode, 
+      currentTrackIndex: 0, 
+      shuffledPlaylist: [], 
+      participants: [], 
+      votes: {},
+      roundTimer: 30 
+    };
     setGame(newGame);
     setSubmissions([]);
     setRole('admin');
@@ -94,67 +132,125 @@ export const useGameLogic = () => {
 
   const handleJoinGame = (code: string, name: string) => {
     const normalized = code.trim().toUpperCase();
-    if (normalized === game.lobbyCode.toUpperCase()) {
-      setRole('player');
-      setPlayerName(name);
-      localStorage.setItem('qui_ecoute_ca_name', name);
-      wsClientRef.current?.send({ type: 'participant:joined', payload: { name, lobbyCode: normalized } });
-    } else {
-      setErrorMessage("Code invalide !");
-    }
+    // On met à jour le lobbyCode local pour permettre la réception des messages
+    setGame(prev => ({ ...prev, lobbyCode: normalized }));
+    setRole('player');
+    setPlayerName(name);
+    localStorage.setItem('qui_ecoute_ca_name', name);
+    
+    wsClientRef.current?.send({ 
+      type: 'participant:joined', 
+      payload: { name, lobbyCode: normalized } 
+    });
   };
 
   const addSubmission = async (url: string, manualTime: number) => {
     const videoId = extractVideoId(url);
-    if (!videoId) return setErrorMessage("URL Invalide");
+    if (!videoId) {
+      setErrorMessage("L'URL YouTube est invalide !");
+      return;
+    }
+
     setIsLoadingTitle(true);
-    
-    // ... logic fetch titre (simplifiée ici)
+    let videoTitle = "Musique Mystère";
+    try {
+      const response = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`);
+      const data = await response.json();
+      videoTitle = data.title || "Musique Mystère";
+    } catch (e) {
+      console.error(e);
+    }
+
     const newSub: Submission = {
       id: Math.random().toString(36).substr(2, 9),
       senderName: playerName,
       youtubeUrl: url,
       videoId,
-      videoTitle: "Musique",
-      startTime: manualTime || extractTimecode(url),
+      videoTitle,
+      startTime: manualTime > 0 ? manualTime : extractTimecode(url),
       timestamp: Date.now()
     };
 
     setSubmissions(prev => [...prev, newSub]);
-    wsClientRef.current?.send({ type: 'submission:new', payload: { lobbyCode: game.lobbyCode, submission: newSub } });
+    wsClientRef.current?.send({ 
+      type: 'submission:new', 
+      payload: { lobbyCode: game.lobbyCode, submission: newSub } 
+    });
     setIsLoadingTitle(false);
   };
 
   const startGame = () => {
-    const newGame = { ...game, status: 'playing', shuffledPlaylist: shuffleArray(submissions) };
+    if (submissions.length === 0) return;
+    const newGame: GameState = {
+      ...game,
+      status: 'playing',
+      currentTrackIndex: 0,
+      shuffledPlaylist: shuffleArray(submissions),
+      votes: {},
+    };
     setGame(newGame);
     wsClientRef.current?.send({ type: 'game:start', payload: newGame });
   };
 
+  // MISE À JOUR OPTIMISTE ICI
   const handleVote = (guessedName: string) => {
-    const newVote = { voterName: playerName, guessedName };
+    const trackIdx = game.currentTrackIndex;
+    
+    // 1. On vérifie localement si on a déjà voté
+    const currentVotes = game.votes[trackIdx] || [];
+    if (currentVotes.some(v => v.voterName === playerName)) return;
+
+    const newVote: Vote = { voterName: playerName, guessedName };
+
+    // 2. Mise à jour immédiate de l'état local (pour bloquer le bouton)
+    setGame(prev => ({
+      ...prev,
+      votes: {
+        ...prev.votes,
+        [trackIdx]: [...(prev.votes[trackIdx] || []), newVote]
+      }
+    }));
+
+    // 3. Envoi au serveur
     wsClientRef.current?.send({ 
       type: 'vote:new', 
-      payload: { lobbyCode: game.lobbyCode, trackIndex: game.currentTrackIndex, vote: newVote } 
+      payload: { 
+        lobbyCode: game.lobbyCode, 
+        trackIndex: trackIdx, 
+        vote: newVote 
+      } 
     });
   };
 
   const nextTrack = () => {
-    const isLast = game.currentTrackIndex >= game.shuffledPlaylist.length - 1;
-    if (isLast) {
+    if (game.currentTrackIndex < game.shuffledPlaylist.length - 1) {
+      const newIndex = game.currentTrackIndex + 1;
+      setGame(prev => ({ ...prev, currentTrackIndex: newIndex }));
+      wsClientRef.current?.send({ 
+        type: 'track:next', 
+        payload: { lobbyCode: game.lobbyCode, newIndex } 
+      });
+    } else {
       const finishedGame = { ...game, status: 'finished' };
       setGame(finishedGame);
       wsClientRef.current?.send({ type: 'game:update', payload: finishedGame });
-    } else {
-      const newIndex = game.currentTrackIndex + 1;
-      setGame(prev => ({ ...prev, currentTrackIndex: newIndex }));
-      wsClientRef.current?.send({ type: 'track:next', payload: { lobbyCode: game.lobbyCode, newIndex } });
     }
   };
 
   return {
-    role, playerName, game, submissions, errorMessage, isLoadingTitle,
-    setErrorMessage, handleCreateGame, handleJoinGame, addSubmission, 
-    startGame, handleVote, nextTrack, setRoundTimer: (s:number) => setGame(p=>({...p, roundTimer: s}))
+    role,
+    playerName,
+    game,
+    submissions,
+    errorMessage,
+    isLoadingTitle,
+    setErrorMessage,
+    handleCreateGame,
+    handleJoinGame,
+    addSubmission,
+    startGame,
+    handleVote,
+    nextTrack,
+    setRoundTimer: (seconds: number) => setGame(prev => ({ ...prev, roundTimer: seconds }))
   };
 };

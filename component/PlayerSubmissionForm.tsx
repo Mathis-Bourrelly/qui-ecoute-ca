@@ -42,7 +42,7 @@ const PlayerSubmissionForm: React.FC<PlayerSubmissionFormProps> = ({ playerName,
           disabled={isProcessing || !url} 
           className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-black py-4 rounded-xl shadow-[0_6px_0_#9a3412] active:translate-y-1 active:shadow-none transition-all uppercase italic flex items-center justify-center gap-2"
         >
-          {isProcessing ? "RÉCUPÉRATION... 🔄" : "ENVOYER AU RÉGIE ! 📢"}
+          {isProcessing ? "RÉCUPÉRATION... 🔄" : "ENVOYER EN RÉGIE ! 📢"}
         </button>
       </div>
     </div>

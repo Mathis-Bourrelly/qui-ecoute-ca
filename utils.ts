@@ -6,20 +6,24 @@ export const extractVideoId = (url: string): string | null => {
 };
 
 export const extractTimecode = (url: string): number => {
-  const urlObj = new URL(url.includes('://') ? url : `https://${url}`);
-  const t = urlObj.searchParams.get('t') || urlObj.searchParams.get('start');
-  
-  if (!t) return 0;
-  
-  // Gère les formats comme 1m20s ou juste 80
-  const match = t.match(/(?:(\d+)m)?(?:(\d+)s)?(\d+)?/);
-  if (!match) return 0;
-  
-  const m = parseInt(match[1] || '0');
-  const s = parseInt(match[2] || '0');
-  const pureS = parseInt(match[3] || '0');
-  
-  return (m * 60) + s + (match[3] ? pureS : 0);
+  try {
+    const urlObj = new URL(url.includes('://') ? url : `https://${url}`);
+    const t = urlObj.searchParams.get('t') || urlObj.searchParams.get('start');
+    if (!t) return 0;
+
+    // Si c'est juste un nombre (ex: t=80)
+    if (/^\d+$/.test(t)) return parseInt(t, 10);
+
+    // Si c'est au format 1m20s
+    let totalSeconds = 0;
+    const minutes = t.match(/(\d+)m/);
+    const seconds = t.match(/(\d+)s/);
+    if (minutes) totalSeconds += parseInt(minutes[1], 10) * 60;
+    if (seconds) totalSeconds += parseInt(seconds[1], 10);
+    return totalSeconds;
+  } catch {
+    return 0;
+  }
 };
 
 export const shuffleArray = <T,>(array: T[]): T[] => {
