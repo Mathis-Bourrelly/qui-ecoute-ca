@@ -62,7 +62,12 @@ const App: React.FC = () => {
           }
 
           if (msg.type === 'submission:new' && msg.payload) {
-            const sub = msg.payload as Submission;
+            // payload may be { lobbyCode, submission }
+            const p = msg.payload as any;
+            const sub = p.submission || p;
+            const lobby = (p.lobbyCode || '').toString().trim().toUpperCase();
+            const currentLobby = (game.lobbyCode || '').toString().trim().toUpperCase();
+            if (lobby && lobby !== currentLobby) return;
             setSubmissions(prev => {
               if (prev.some(s => s.id === sub.id)) return prev;
               return [...prev, sub];
@@ -70,16 +75,32 @@ const App: React.FC = () => {
             return;
           }
 
+          if (msg.type === 'submission:bulk' && msg.payload) {
+            const { lobbyCode, submissions: subs } = msg.payload as { lobbyCode: string; submissions: Submission[] };
+            const currentLobby = (game.lobbyCode || '').toString().trim().toUpperCase();
+            if (!lobbyCode || lobbyCode.toString().trim().toUpperCase() !== currentLobby) return;
+            setSubmissions(subs || []);
+            return;
+          }
+
           if (msg.type === 'vote:new' && msg.payload) {
-            const { trackIndex, vote } = msg.payload as { trackIndex: number; vote: Vote };
+            const p = msg.payload as any;
+            const { lobbyCode, trackIndex, vote } = p;
+            const currentLobby = (game.lobbyCode || '').toString().trim().toUpperCase();
+            if (lobbyCode && lobbyCode.toString().trim().toUpperCase() !== currentLobby) return;
             setGame(prev => {
-              if (prev.currentTrackIndex !== trackIndex) {
-                // still store vote under the provided track index
-              }
               const existing = prev.votes[trackIndex] || [];
               if (existing.some(v => v.voterName === vote.voterName)) return prev;
               return { ...prev, votes: { ...prev.votes, [trackIndex]: [...existing, vote] } };
             });
+            return;
+          }
+
+          if (msg.type === 'votes:bulk' && msg.payload) {
+            const { lobbyCode, votes } = msg.payload as { lobbyCode: string; votes: Record<number, Vote[]> };
+            const currentLobby = (game.lobbyCode || '').toString().trim().toUpperCase();
+            if (!lobbyCode || lobbyCode.toString().trim().toUpperCase() !== currentLobby) return;
+            setGame(prev => ({ ...prev, votes: votes || {} }));
             return;
           }
 
@@ -213,7 +234,7 @@ const App: React.FC = () => {
 
     // broadcast submission so host / other clients see it
     try {
-      wsClientRef.current?.send({ type: 'submission:new', payload: newSub });
+      wsClientRef.current?.send({ type: 'submission:new', payload: { lobbyCode: game.lobbyCode, submission: newSub } });
     } catch (e) {
       console.warn('failed to broadcast submission', e);
     }
@@ -254,7 +275,7 @@ const App: React.FC = () => {
 
     // broadcast vote so host can aggregate in real time
     try {
-      wsClientRef.current?.send({ type: 'vote:new', payload: { trackIndex: game.currentTrackIndex, vote: newVote } });
+      wsClientRef.current?.send({ type: 'vote:new', payload: { lobbyCode: game.lobbyCode, trackIndex: game.currentTrackIndex, vote: newVote } });
     } catch (e) {
       console.warn('failed to broadcast vote', e);
     }
@@ -265,7 +286,7 @@ const App: React.FC = () => {
       const newIndex = game.currentTrackIndex + 1;
       setGame(prev => ({ ...prev, currentTrackIndex: newIndex }));
       try {
-        wsClientRef.current?.send({ type: 'track:next', payload: { newIndex } });
+        wsClientRef.current?.send({ type: 'track:next', payload: { lobbyCode: game.lobbyCode, newIndex } });
       } catch (e) {
         console.warn('failed to broadcast track:next', e);
       }

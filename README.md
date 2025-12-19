@@ -62,7 +62,7 @@ npm install
 npm run start:ws
 ```
 
-Le serveur écoute par défaut sur le port `3001`.
+Le serveur écoute par défaut sur le port `3000`.
 
 ## Déploiement sur Windows (WAMP) avec nom de domaine
 
@@ -109,8 +109,8 @@ Exemple de VirtualHost Apache (http -> ensuite on activera HTTPS):
     RewriteEngine On
 
     # proxy websocket tunnel
-    ProxyPass "/ws/" "http://127.0.0.1:3001/"
-    ProxyPassReverse "/ws/" "http://127.0.0.1:3001/"
+    ProxyPass "/ws/" "http://127.0.0.1:3000/"
+    ProxyPassReverse "/ws/" "http://127.0.0.1:3000/"
 
     ErrorLog "${APACHE_LOG_DIR}/qui-ecoute-ca-error.log"
     CustomLog "${APACHE_LOG_DIR}/qui-ecoute-ca-access.log" common
@@ -140,10 +140,10 @@ Assurez-vous d'activer les modules Apache requis : `proxy`, `proxy_http`, `proxy
 - Autorisez le trafic HTTP/HTTPS (ports 80/443) dans le pare-feu Windows. Le serveur WS n'a normalement pas besoin d'être exposé publiquement directement si vous reverse-proxy `/ws/` via Apache.
 
 6) Config côté client
-- J'ai modifié le client WS pour se connecter automatiquement à `ws[s]://<host>/ws/` en fonction du protocole. Si vous utilisez le reverse-proxy Apache vers `127.0.0.1:3001`, aucune autre modification n'est requise côté client.
+- J'ai modifié le client WS pour se connecter automatiquement à `ws[s]://<host>/ws/` en fonction du protocole. Si vous utilisez le reverse-proxy Apache vers `127.0.0.1:3000`, aucune autre modification n'est requise côté client.
 
 Remarques
-- Mode de fonctionnement conseillé : Apache sert les fichiers statiques et reverse-proxifie `/ws/` vers le serveur Node local. Le Node server reste en écoute sur `localhost:3001` et n'est pas exposé directement.
+- Mode de fonctionnement conseillé : Apache sert les fichiers statiques et reverse-proxifie `/ws/` vers le serveur Node local. Le Node server reste en écoute sur `localhost:3000` et n'est pas exposé directement.
 - Pour production, pensez à sécuriser et surveiller le service Node (logs, redémarrage automatique) ; `NSSM` ou `pm2` sont des solutions simples pour Windows.
 
 Souhaitez-vous que j'ajoute dans le dépôt des fichiers `deploy/windows/nssm-instructions.txt` et un exemple `apache-vhost.conf` prêts à l'emploi ?

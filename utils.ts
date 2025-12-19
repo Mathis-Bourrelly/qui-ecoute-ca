@@ -53,7 +53,7 @@ export const createWebSocketClient = (opts?: {
     } catch (e) {
       // fallback
     }
-    return 'ws://localhost:3001';
+    return 'ws://localhost:3000';
   })();
 
   const url = opts?.url || defaultUrl;
