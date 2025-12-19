@@ -70,12 +70,20 @@ const App: React.FC = () => {
             const p = msg.payload as any;
             const sub = p.submission || p;
             const lobby = (p.lobbyCode || '').toString().trim().toUpperCase();
-            const currentLobby = (game.lobbyCode || '').toString().trim().toUpperCase();
+            const currentLobby = (gameRef.current?.lobbyCode || '').toString().trim().toUpperCase();
             if (lobby && lobby !== currentLobby) return;
             setSubmissions(prev => {
-              if (prev.some(s => s.id === sub.id)) return prev;
+              if (prev.some(s => s.id === sub.id)) {
+                console.log('submission already present, skipping', sub.id);
+                return prev;
+              }
+              console.log('adding submission from WS', sub.id, sub.senderName);
               return [...prev, sub];
             });
+
+            // ensure participant list contains the sender
+            setGame(prev => ({ ...prev, participants: Array.from(new Set([...(prev.participants || []), sub.senderName])) }));
+
             return;
           }
 
