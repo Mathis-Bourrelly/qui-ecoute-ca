@@ -103,17 +103,28 @@ wss.on('connection', (ws, req) => {
           break;
         }
 
-        case 'vote:new': {
-          const { lobbyCode, trackIndex, vote } = payload || {};
-          const s = ensureLobby(lobbyCode);
-          if (!s) break;
-          s.votes = s.votes || {};
-          s.votes[trackIndex] = s.votes[trackIndex] || [];
-          if (!s.votes[trackIndex].some(v => v.voterName === vote.voterName)) s.votes[trackIndex].push(vote);
-          s.game.votes = s.votes;
-          broadcast({ type: 'vote:new', payload: { lobbyCode, trackIndex, vote } }, ws);
-          break;
-        }
+         case 'vote:new': {
+            const { lobbyCode, trackIndex, vote } = payload || {};
+            const s = ensureLobby(lobbyCode);
+            if (!s) break;
+            const idx = Number(trackIndex);
+            
+            if (!s.game.votes) s.game.votes = {};
+            if (!s.game.votes[idx]) s.game.votes[idx] = [];
+
+            const alreadyVoted = s.game.votes[idx].some(v => v.voterName === vote.voterName);
+            
+            if (!alreadyVoted) {
+                s.game.votes[idx].push(vote);
+                console.log(`Vote ajouté pour le lobby ${lobbyCode}, track ${idx}`);
+            
+                broadcast({ 
+                type: 'vote:new', 
+                payload: { lobbyCode, trackIndex: idx, vote } 
+                }, ws);
+            }
+            break;
+            }
 
         case 'track:next': {
           const { lobbyCode, newIndex } = payload || {};
