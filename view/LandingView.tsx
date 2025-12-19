@@ -7,7 +7,8 @@ interface LandingViewProps {
 }
 
 const LandingView: React.FC<LandingViewProps> = ({ onCreate, onJoin }) => {
-  const [code, setCode] = useState('');
+  // Récupère le code depuis l'URL s'il existe
+  const [code, setCode] = useState(() => (new URLSearchParams(window.location.search).get('code') || '').toUpperCase());
   const [name, setName] = useState(localStorage.getItem('qui_ecoute_ca_name') || '');
 
   return (
@@ -39,11 +40,11 @@ const LandingView: React.FC<LandingViewProps> = ({ onCreate, onJoin }) => {
             type="text" 
             placeholder="CODE PLATEAU" 
             value={code} 
-            onChange={(e) => setCode(e.target.value.slice(0, 4))} 
+            onChange={(e) => setCode(e.target.value.slice(0, 4).toUpperCase())} 
             className="w-full bg-white border-4 border-orange-700 rounded-2xl px-4 py-3 text-center text-2xl font-black text-orange-600" 
           />
           <button 
-            onClick={() => onJoin(code, name)} 
+            onClick={() => onJoin(code.toUpperCase(), name)} 
             disabled={!name || code.length < 4} 
             className="w-full bg-indigo-900 hover:bg-indigo-800 disabled:opacity-50 text-white font-black py-4 rounded-2xl transition-all uppercase italic shadow-lg active:translate-y-1"
           >

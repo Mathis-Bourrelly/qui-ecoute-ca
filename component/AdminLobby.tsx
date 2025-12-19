@@ -10,7 +10,10 @@ interface AdminLobbyProps {
 }
 
 const AdminLobby: React.FC<AdminLobbyProps> = ({ submissions, game, onStart, setTimer }) => {
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.href)}`;
+  // Génère l'URL de l'application avec le code de session pour le QR Code
+  const joinUrl = `${window.location.origin}${window.location.pathname}?code=${game.lobbyCode}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(joinUrl)}`;
+  
   const stats: Record<string, number> = {};
   submissions.forEach(s => stats[s.senderName] = (stats[s.senderName] || 0) + 1);
 

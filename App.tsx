@@ -48,6 +48,15 @@ const App: React.FC = () => {
     return () => window.removeEventListener('storage', handleStorage);
   }, [submissions, game]);
 
+  // Synchronisation avec le code de l'URL si présent
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const codeParam = params.get('code');
+    if (codeParam) {
+      setGame(prev => ({ ...prev, lobbyCode: codeParam.toUpperCase() }));
+    }
+  }, []);
+
   const handleCreateGame = () => {
     const newCode = generateLobbyCode();
     setGame({ 
@@ -68,7 +77,7 @@ const App: React.FC = () => {
   };
 
   const handleJoinGame = (code: string, name: string) => {
-    if (code === game.lobbyCode) {
+    if (code.toUpperCase() === game.lobbyCode.toUpperCase()) {
       if (!name) return setErrorMessage("Choisis un nom de scène !");
       setRole('player');
       setPlayerName(name);
