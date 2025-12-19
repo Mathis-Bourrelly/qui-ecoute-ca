@@ -37,12 +37,16 @@ const App: React.FC = () => {
   });
 
   const wsClientRef = useRef<ReturnType<typeof createWebSocketClient> | null>(null);
+  const gameRef = useRef<GameState>(game);
+
+  useEffect(() => { gameRef.current = game; }, [game]);
 
   useEffect(() => {
     // init WS client to receive game updates from presenter
     wsClientRef.current = createWebSocketClient({
       onMessage: (msg: WSMessage) => {
         try {
+          console.log('WS in client <-', msg, 'localLobby', gameRef.current?.lobbyCode);
           if (!msg || !msg.type) return;
 
           if (msg.type === 'game:update' && msg.payload) {
