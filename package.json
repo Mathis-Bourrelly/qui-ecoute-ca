@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start:ws": "node server/ws-server.js"
   },
   "dependencies": {
     "react": "^19.2.3",
+    "ws": "^8.13.0",
     "@google/genai": "^1.34.0",
     "react-dom": "^19.2.3"
   },

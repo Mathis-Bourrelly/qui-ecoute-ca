@@ -45,3 +45,105 @@
 ---
 
 *Développé avec passion pour des soirées mémorables.*
+
+## Démarrer le serveur WebSocket localement
+
+Pour exécuter un serveur WebSocket local simple (utilisé pour synchroniser plusieurs écrans en local) :
+
+1. Installez les dépendances si ce n'est pas déjà fait :
+
+```bash
+npm install
+```
+
+2. Lancez le serveur WebSocket :
+
+```bash
+npm run start:ws
+```
+
+Le serveur écoute par défaut sur le port `3001`.
+
+## Déploiement sur Windows (WAMP) avec nom de domaine
+
+Si votre serveur est une machine Windows avec WAMP (Apache) et que vous souhaitez héberger l'app et le serveur WebSocket :
+
+Prérequis sur le serveur Windows
+- Git
+- Node.js (>= 18)
+- WAMP (Apache + PHP) installé et fonctionnel
+- Un utilitaire pour gérer le service Node (ex: NSSM) ou `pm2-windows-service`
+- Un client ACME pour Windows pour obtenir des certificats (ex: win-acme)
+
+Étapes (exécuter en tant qu'administrateur quand nécessaire)
+
+1) Récupérer le code depuis GitHub et installer
+
+```powershell
+cd C:\path\to\www
+git clone https://github.com/<votre-repo>.git qui-ecoute-ca
+cd qui-ecoute-ca
+npm ci
+npm run build
+```
+
+2) Servir le frontend via Apache
+- Déplacez le contenu de `dist/` vers le dossier racine de votre VirtualHost (ex: `C:\wamp64\www\qui-ecoute-ca\dist`) ou pointez le `DocumentRoot` du VirtualHost vers ce dossier.
+
+Exemple de VirtualHost Apache (http -> ensuite on activera HTTPS):
+
+```
+<VirtualHost *:80>
+    ServerName example.com
+    ServerAlias www.example.com
+    DocumentRoot "C:/wamp64/www/qui-ecoute-ca/dist"
+
+    <Directory "C:/wamp64/www/qui-ecoute-ca/dist">
+        Require all granted
+        AllowOverride All
+    </Directory>
+
+    # Proxy WebSocket (/ws/) vers le serveur Node local
+    ProxyRequests Off
+    ProxyPreserveHost On
+    RewriteEngine On
+
+    # proxy websocket tunnel
+    ProxyPass "/ws/" "http://127.0.0.1:3001/"
+    ProxyPassReverse "/ws/" "http://127.0.0.1:3001/"
+
+    ErrorLog "${APACHE_LOG_DIR}/qui-ecoute-ca-error.log"
+    CustomLog "${APACHE_LOG_DIR}/qui-ecoute-ca-access.log" common
+</VirtualHost>
+```
+
+Assurez-vous d'activer les modules Apache requis : `proxy`, `proxy_http`, `proxy_wstunnel`, `rewrite`.
+
+3) Obtenir un certificat TLS (win-acme)
+- Téléchargez et lancez win-acme et suivez la procédure pour générer et installer un certificat pour `example.com`. win-acme sait mettre à jour la configuration Apache automatiquement.
+
+4) Lancer le serveur WebSocket Node en arrière-plan
+- Option A (NSSM - recommandée pour Windows simple) :
+  1. Téléchargez NSSM (https://nssm.cc/download) et extrayez.
+  2. Installez un service :
+     ```powershell
+     nssm install QuiEcouteCaWS
+     # Program: C:\Program Files\nodejs\node.exe
+     # Arguments: C:\path\to\qui-ecoute-ca\server\ws-server.js
+     # Start directory: C:\path\to\qui-ecoute-ca
+     nssm start QuiEcouteCaWS
+     ```
+
+- Option B (`pm2` + `pm2-windows-service`): installez pm2 globalement et configurez en service.
+
+5) Firewall
+- Autorisez le trafic HTTP/HTTPS (ports 80/443) dans le pare-feu Windows. Le serveur WS n'a normalement pas besoin d'être exposé publiquement directement si vous reverse-proxy `/ws/` via Apache.
+
+6) Config côté client
+- J'ai modifié le client WS pour se connecter automatiquement à `ws[s]://<host>/ws/` en fonction du protocole. Si vous utilisez le reverse-proxy Apache vers `127.0.0.1:3001`, aucune autre modification n'est requise côté client.
+
+Remarques
+- Mode de fonctionnement conseillé : Apache sert les fichiers statiques et reverse-proxifie `/ws/` vers le serveur Node local. Le Node server reste en écoute sur `localhost:3001` et n'est pas exposé directement.
+- Pour production, pensez à sécuriser et surveiller le service Node (logs, redémarrage automatique) ; `NSSM` ou `pm2` sont des solutions simples pour Windows.
+
+Souhaitez-vous que j'ajoute dans le dépôt des fichiers `deploy/windows/nssm-instructions.txt` et un exemple `apache-vhost.conf` prêts à l'emploi ?

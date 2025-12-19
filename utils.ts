@@ -34,3 +34,76 @@ export const shuffleArray = <T,>(array: T[]): T[] => {
 export const generateLobbyCode = (): string => {
   return Math.floor(1000 + Math.random() * 9000).toString();
 };
+
+export type WSMessage = { type: string; payload?: any };
+
+export const createWebSocketClient = (opts?: {
+  url?: string;
+  onOpen?: () => void;
+  onClose?: (ev?: CloseEvent) => void;
+  onMessage?: (msg: WSMessage) => void;
+  onError?: (err: Event) => void;
+}) => {
+  const defaultUrl = (() => {
+    try {
+      if (typeof location !== 'undefined') {
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        return `${proto}://${location.host}/ws/`;
+      }
+    } catch (e) {
+      // fallback
+    }
+    return 'ws://localhost:3001';
+  })();
+
+  const url = opts?.url || defaultUrl;
+  let ws: WebSocket | null = null;
+  let reconnectDelay = 1000;
+  let shouldReconnect = true;
+
+  const connect = () => {
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      reconnectDelay = 1000;
+      opts?.onOpen && opts.onOpen();
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        opts?.onMessage && opts.onMessage(data as WSMessage);
+      } catch (err) {
+        // ignore parse errors
+      }
+    };
+
+    ws.onclose = (ev) => {
+      opts?.onClose && opts.onClose(ev);
+      if (shouldReconnect) {
+        setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(10000, reconnectDelay + 1000);
+      }
+    };
+
+    ws.onerror = (err) => {
+      opts?.onError && opts.onError(err);
+    };
+  };
+
+  connect();
+
+  return {
+    send: (msg: WSMessage | string) => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        return true;
+      }
+      return false;
+    },
+    close: () => {
+      shouldReconnect = false;
+      ws?.close();
+    },
+  };
+};

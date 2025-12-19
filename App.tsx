@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Submission, GameState, UserRole, Vote } from './types';
-import { extractVideoId, extractTimecode, shuffleArray, generateLobbyCode } from './utils';
+import { extractVideoId, extractTimecode, shuffleArray, generateLobbyCode, createWebSocketClient, WSMessage } from './utils';
 
 // Importation des composants modulaires
 import LandingView from './view/LandingView';
@@ -29,12 +29,78 @@ const App: React.FC = () => {
       status: 'setup',
       currentTrackIndex: 0,
       shuffledPlaylist: [],
-      lobbyCode: generateLobbyCode(),
+      lobbyCode: '',
       participants: [],
       votes: {},
       roundTimer: 30,
     };
   });
+
+  const wsClientRef = useRef<ReturnType<typeof createWebSocketClient> | null>(null);
+
+  useEffect(() => {
+    // init WS client to receive game updates from presenter
+    wsClientRef.current = createWebSocketClient({
+      onMessage: (msg: WSMessage) => {
+        try {
+          if (!msg || !msg.type) return;
+
+          if (msg.type === 'game:update' && msg.payload) {
+            setGame(msg.payload as GameState);
+            return;
+          }
+
+          if (msg.type === 'participant:joined' && msg.payload) {
+            const { name, lobbyCode } = msg.payload as { name: string; lobbyCode?: string };
+            setGame(prev => {
+              const currentLobby = (prev.lobbyCode || '').toString().trim().toUpperCase();
+              if (!currentLobby || (lobbyCode || '').toString().trim().toUpperCase() !== currentLobby) return prev;
+              const participants = Array.from(new Set([...(prev.participants || []), name]));
+              return { ...prev, participants };
+            });
+            return;
+          }
+
+          if (msg.type === 'submission:new' && msg.payload) {
+            const sub = msg.payload as Submission;
+            setSubmissions(prev => {
+              if (prev.some(s => s.id === sub.id)) return prev;
+              return [...prev, sub];
+            });
+            return;
+          }
+
+          if (msg.type === 'vote:new' && msg.payload) {
+            const { trackIndex, vote } = msg.payload as { trackIndex: number; vote: Vote };
+            setGame(prev => {
+              if (prev.currentTrackIndex !== trackIndex) {
+                // still store vote under the provided track index
+              }
+              const existing = prev.votes[trackIndex] || [];
+              if (existing.some(v => v.voterName === vote.voterName)) return prev;
+              return { ...prev, votes: { ...prev.votes, [trackIndex]: [...existing, vote] } };
+            });
+            return;
+          }
+
+          if (msg.type === 'game:start' && msg.payload) {
+            setGame(msg.payload as GameState);
+            return;
+          }
+
+          if (msg.type === 'track:next' && msg.payload) {
+            const { newIndex } = msg.payload as { newIndex: number };
+            setGame(prev => ({ ...prev, currentTrackIndex: newIndex }));
+            return;
+          }
+        } catch (e) {
+          console.warn('Failed to apply WS message', e);
+        }
+      }
+    });
+
+    return () => wsClientRef.current?.close();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('qui_ecoute_ca_data', JSON.stringify(submissions));
@@ -59,7 +125,7 @@ const App: React.FC = () => {
 
   const handleCreateGame = () => {
     const newCode = generateLobbyCode();
-    setGame({ 
+    const newGame: GameState = { 
       status: 'setup', 
       lobbyCode: newCode, 
       currentTrackIndex: 0, 
@@ -67,7 +133,16 @@ const App: React.FC = () => {
       participants: [], 
       votes: {},
       roundTimer: 30
-    });
+    };
+
+    setGame(newGame);
+
+    // broadcast to other connected clients so they pick up the lobbyCode
+    try {
+      wsClientRef.current?.send({ type: 'game:update', payload: newGame });
+    } catch (e) {
+      console.warn('WS broadcast failed', e);
+    }
     setSubmissions([]);
     setRole('admin');
   };
@@ -77,7 +152,15 @@ const App: React.FC = () => {
   };
 
   const handleJoinGame = (code: string, name: string) => {
-    if (code.toUpperCase() === game.lobbyCode.toUpperCase()) {
+    const normalized = (code || '').trim().toUpperCase();
+    const lobby = (game.lobbyCode || '').toString().trim().toUpperCase();
+
+    if (!lobby) {
+      console.warn('attempt to join but no lobbyCode present in game state', { code: normalized, game });
+      return setErrorMessage("Aucun plateau actif (réessayez depuis l'écran du présentateur)");
+    }
+
+    if (normalized === lobby) {
       if (!name) return setErrorMessage("Choisis un nom de scène !");
       setRole('player');
       setPlayerName(name);
@@ -85,8 +168,15 @@ const App: React.FC = () => {
       
       if (!game.participants.includes(name)) {
         setGame(prev => ({ ...prev, participants: [...prev.participants, name] }));
+        // notify other clients (host) that a participant joined
+        try {
+          wsClientRef.current?.send({ type: 'participant:joined', payload: { name, lobbyCode: normalized } });
+        } catch (e) {
+          console.warn('failed to send participant:joined', e);
+        }
       }
     } else {
+      console.warn('invalid lobby code entered', { entered: normalized, expected: lobby });
       setErrorMessage("Code de plateau invalide !");
     }
   };
@@ -120,19 +210,33 @@ const App: React.FC = () => {
       timestamp: Date.now()
     };
     setSubmissions(prev => [...prev, newSub]);
+
+    // broadcast submission so host / other clients see it
+    try {
+      wsClientRef.current?.send({ type: 'submission:new', payload: newSub });
+    } catch (e) {
+      console.warn('failed to broadcast submission', e);
+    }
   };
 
   const startGame = () => {
     if (submissions.length < 1) return;
     const allSenders = Array.from(new Set(submissions.map(s => s.senderName)));
-    setGame(prev => ({
-      ...prev,
+    const newGame: GameState = {
+      ...game,
       status: 'playing',
       currentTrackIndex: 0,
-      participants: Array.from(new Set([...prev.participants, ...allSenders])),
+      participants: Array.from(new Set([...(game.participants || []), ...allSenders])),
       shuffledPlaylist: shuffleArray(submissions),
       votes: {},
-    }));
+    };
+    setGame(newGame);
+
+    try {
+      wsClientRef.current?.send({ type: 'game:start', payload: newGame });
+    } catch (e) {
+      console.warn('failed to broadcast game:start', e);
+    }
   };
 
   const handleVote = (guessedName: string) => {
@@ -147,13 +251,32 @@ const App: React.FC = () => {
         [prev.currentTrackIndex]: [...(prev.votes[prev.currentTrackIndex] || []), newVote]
       }
     }));
+
+    // broadcast vote so host can aggregate in real time
+    try {
+      wsClientRef.current?.send({ type: 'vote:new', payload: { trackIndex: game.currentTrackIndex, vote: newVote } });
+    } catch (e) {
+      console.warn('failed to broadcast vote', e);
+    }
   };
 
   const nextTrack = () => {
     if (game.currentTrackIndex < game.shuffledPlaylist.length - 1) {
-      setGame(prev => ({ ...prev, currentTrackIndex: prev.currentTrackIndex + 1 }));
+      const newIndex = game.currentTrackIndex + 1;
+      setGame(prev => ({ ...prev, currentTrackIndex: newIndex }));
+      try {
+        wsClientRef.current?.send({ type: 'track:next', payload: { newIndex } });
+      } catch (e) {
+        console.warn('failed to broadcast track:next', e);
+      }
     } else {
-      setGame(prev => ({ ...prev, status: 'finished' }));
+      const newGame = { ...game, status: 'finished' };
+      setGame(newGame);
+      try {
+        wsClientRef.current?.send({ type: 'game:update', payload: newGame });
+      } catch (e) {
+        console.warn('failed to broadcast game finished', e);
+      }
     }
   };
 
@@ -170,9 +293,9 @@ const App: React.FC = () => {
         <header className="flex justify-between items-center my-4 md:my-6 bg-gradient-to-r from-yellow-400 to-orange-500 p-3 md:p-5 rounded-2xl md:rounded-b-[2.5rem] shadow-2xl border-b-4 md:border-b-8 border-orange-700">
           <div className="flex flex-col">
             <h1 className="text-sm md:text-lg font-black text-indigo-950 uppercase italic tracking-tighter leading-none">QUI ÉCOUTE ÇA ?</h1>
-            <div className="mt-1 bg-indigo-900 px-2 md:px-3 py-0.5 md:py-1 rounded-lg md:rounded-xl flex items-center gap-1.5 md:gap-2">
+              <div className="mt-1 bg-indigo-900 px-2 md:px-3 py-0.5 md:py-1 rounded-lg md:rounded-xl flex items-center gap-1.5 md:gap-2">
               <span className="text-[7px] md:text-[9px] text-yellow-400 font-black uppercase">PLATEAU</span>
-              <span className="text-sm md:text-xl font-black text-white tracking-widest leading-none">#{game.lobbyCode}</span>
+              <span className="text-sm md:text-xl font-black text-white tracking-widest leading-none">#{game.lobbyCode || '----'}</span>
             </div>
           </div>
           <button onClick={resetGame} className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase italic border-b-2 md:border-b-4 border-red-800 active:translate-y-1 active:border-b-0 transition-all">QUITTER</button>
