@@ -35,6 +35,8 @@ export const useGameLogic = () => {
     };
   });
 
+  const [scores, setScores] = useState<Record<string, { correct: number; timesGuessed: number }>>({});
+
   const wsClientRef = useRef<ReturnType<typeof createWebSocketClient> | null>(null);
   const gameRef = useRef<GameState>(game);
 
@@ -109,6 +111,13 @@ export const useGameLogic = () => {
               const { newIndex, lobbyCode: nLobby } = msg.payload as any;
               if (nLobby?.toUpperCase() !== currentLobby) return;
               setGame(prev => ({ ...prev, currentTrackIndex: newIndex }));
+              break;
+            }
+
+            case 'scores:update': {
+              const { lobbyCode: sLobby, scores: newScores } = msg.payload as any;
+              if (sLobby?.toUpperCase() !== currentLobby) return;
+              setScores(newScores || {});
               break;
             }
           }
@@ -279,6 +288,7 @@ export const useGameLogic = () => {
     role,
     playerName,
     game,
+    scores,
     submissions,
     errorMessage,
     isLoadingTitle,

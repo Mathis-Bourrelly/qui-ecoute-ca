@@ -12,7 +12,7 @@ import Layout from './component/Layout';
 
 const App: React.FC = () => {
   const logic = useGameLogic();
-  const { role, game, submissions, playerName, errorMessage } = logic;
+  const { role, game, submissions, playerName, errorMessage, scores } = logic;
 
   if (errorMessage) {
     return <ErrorModal message={errorMessage} onClose={() => logic.setErrorMessage(null)} />;
@@ -28,7 +28,7 @@ const App: React.FC = () => {
         <>
           {game.status === 'setup' && <AdminLobby submissions={submissions} game={game} onStart={logic.startGame} setTimer={logic.setRoundTimer} />}
           {game.status === 'playing' && <AdminGameView game={game} onNext={logic.goToNextTrack} resetGame={logic.resetGame} />}
-          {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} />}
+          {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} scores={scores} />}
         </>
       ) : (
         <>
@@ -41,7 +41,7 @@ const App: React.FC = () => {
             />
           )}
           {game.status === 'playing' && <PlayerVotingView game={game} playerName={playerName} onVote={logic.handleVote} />}
-          {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} />}
+          {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} scores={scores} />}
         </>
       )}
     </Layout>

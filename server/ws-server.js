@@ -72,6 +72,44 @@ wss.on('connection', (ws, req) => {
           s.game = g;
           // keep existing submissions if present
           broadcast({ type: 'game:update', payload: g }, ws);
+
+          // If the game finished, compute and broadcast scores for a results page
+          try {
+            if (g && g.status === 'finished') {
+              // compute per-player stats: correct guesses and times being guessed
+              const scores = {};
+              const participants = Array.from(new Set([...(s.game.participants || []), ...(s.submissions || []).map(x => x.senderName)]));
+              participants.forEach(p => { scores[p] = { correct: 0, timesGuessed: 0 }; });
+
+              const playlist = (s.game.shuffledPlaylist && Array.isArray(s.game.shuffledPlaylist)) ? s.game.shuffledPlaylist : s.submissions || [];
+
+              const votesMap = s.game.votes || {};
+              for (const [idxStr, votes] of Object.entries(votesMap)) {
+                const idx = Number(idxStr);
+                const actual = (playlist[idx] && playlist[idx].senderName) ? playlist[idx].senderName : null;
+                if (Array.isArray(votes)) {
+                  for (const v of votes) {
+                    const voter = v.voterName;
+                    const guessed = v.guessedName;
+                    if (!scores[voter]) scores[voter] = { correct: 0, timesGuessed: 0 };
+                    if (!scores[guessed]) scores[guessed] = { correct: 0, timesGuessed: 0 };
+
+                    // increment timesGuessed for the guessed player
+                    if (guessed) scores[guessed].timesGuessed = (scores[guessed].timesGuessed || 0) + 1;
+
+                    // increment correct for the voter if their guess matches actual submitter
+                    if (actual && guessed === actual) {
+                      scores[voter].correct = (scores[voter].correct || 0) + 1;
+                    }
+                  }
+                }
+              }
+
+              broadcast({ type: 'scores:update', payload: { lobbyCode: lobby, scores } }, ws);
+            }
+          } catch (e) {
+            console.warn('failed to compute/broadcast scores', e);
+          }
           break;
         }
 
