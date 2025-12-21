@@ -58,12 +58,13 @@ export const useGameLogic = () => {
             case 'game:update':
             case 'game:start':
               if (msg.payload) {
-                const newGameState = msg.payload as GameState;
-                setGame(newGameState);
-                if (newGameState.status === 'setup') {
-                  setSubmissions([]); // Clear player's submissions on game reset
-                }
-              }
+                    const newGameState = msg.payload as GameState & { _reset?: boolean };
+                    setGame(newGameState);
+                    // Only clear submissions when payload explicitly marks a reset (_reset === true)
+                    if (newGameState.status === 'setup' && (newGameState as any)._reset === true) {
+                      setSubmissions([]); // Clear player's submissions on explicit game reset
+                    }
+                  }
               break;
 
             case 'participant:joined': {
@@ -280,6 +281,7 @@ export const useGameLogic = () => {
         currentTrackIndex: 0,
         shuffledPlaylist: [],
         votes: {},
+        _reset: true,
       }
     });
   }, []);
