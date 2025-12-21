@@ -44,22 +44,21 @@
 
 ---
 
-*Développé avec passion pour des soirées mémorables.*
+## Démarrer le serveur
 
-## Démarrer le serveur WebSocket localement
-
-Pour exécuter un serveur WebSocket local simple (utilisé pour synchroniser plusieurs écrans en local) :
-
-1. Installez les dépendances si ce n'est pas déjà fait :
+1. Installer les dépendances :
 
 ```bash
 npm install
 ```
+2. Lancez le build :
 
-2. Lancez le serveur WebSocket :
+```bash
+npm run build
+```
+
+2. Lancer le serveur WebSocket :
 
 ```bash
 npm run start:ws
 ```
-
-Le serveur écoute par défaut sur le port `3001`.
