@@ -76,12 +76,24 @@ wss.on('connection', (ws, req) => {
           // If the game finished, compute and broadcast scores for a results page
           try {
             if (g && g.status === 'finished') {
-              // compute per-player stats: correct guesses and times being guessed
+              // compute per-player stats:
+              // - correctMade: number of correct guesses the player made (voter successes)
+              // - correctReceived: number of times the player's own submissions were correctly identified
+              // - submissions: number of tracks the player submitted
               const scores = {};
               const participants = Array.from(new Set([...(s.game.participants || []), ...(s.submissions || []).map(x => x.senderName)]));
-              participants.forEach(p => { scores[p] = { correct: 0, timesGuessed: 0 }; });
+              participants.forEach(p => { scores[p] = { correctMade: 0, correctReceived: 0, submissions: 0 }; });
 
               const playlist = (s.game.shuffledPlaylist && Array.isArray(s.game.shuffledPlaylist)) ? s.game.shuffledPlaylist : s.submissions || [];
+
+              // Count submissions per player
+              playlist.forEach(track => {
+                const sender = track && track.senderName;
+                if (sender) {
+                  if (!scores[sender]) scores[sender] = { correctMade: 0, correctReceived: 0, submissions: 0 };
+                  scores[sender].submissions = (scores[sender].submissions || 0) + 1;
+                }
+              });
 
               const votesMap = s.game.votes || {};
               for (const [idxStr, votes] of Object.entries(votesMap)) {
@@ -91,15 +103,13 @@ wss.on('connection', (ws, req) => {
                   for (const v of votes) {
                     const voter = v.voterName;
                     const guessed = v.guessedName;
-                    if (!scores[voter]) scores[voter] = { correct: 0, timesGuessed: 0 };
-                    if (!scores[guessed]) scores[guessed] = { correct: 0, timesGuessed: 0 };
+                    if (voter && !scores[voter]) scores[voter] = { correctMade: 0, correctReceived: 0, submissions: 0 };
+                    if (guessed && !scores[guessed]) scores[guessed] = { correctMade: 0, correctReceived: 0, submissions: 0 };
 
-                    // increment timesGuessed for the guessed player
-                    if (guessed) scores[guessed].timesGuessed = (scores[guessed].timesGuessed || 0) + 1;
-
-                    // increment correct for the voter if their guess matches actual submitter
+                    // If guess matches actual submitter, increment both voter success and actual's received count
                     if (actual && guessed === actual) {
-                      scores[voter].correct = (scores[voter].correct || 0) + 1;
+                      if (voter) scores[voter].correctMade = (scores[voter].correctMade || 0) + 1;
+                      scores[actual].correctReceived = (scores[actual].correctReceived || 0) + 1;
                     }
                   }
                 }

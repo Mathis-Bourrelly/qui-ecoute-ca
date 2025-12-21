@@ -3,17 +3,32 @@ import React from 'react';
 
 interface FinishedViewProps {
   onRestart: () => void;
-  scores?: Record<string, { correct: number; timesGuessed: number }>;
+  scores?: Record<string, { correctMade?: number; correctReceived?: number; submissions?: number }>;
   totalTracks?: number;
 }
 
 const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTracks = 0 }) => {
   const entries = scores ? Object.entries(scores) : [];
-  const bestGuessers = entries.slice().sort((a, b) => (b[1].correct - a[1].correct || a[0].localeCompare(b[0])));
-  const leastGuessed = entries.slice().sort((a, b) => (a[1].timesGuessed - b[1].timesGuessed || a[0].localeCompare(b[0])));
+
+  const makeRanked = (entriesList: [string, any][], key: string, descending = true) => {
+    const arr = entriesList.slice().map(([name, s]) => ({ name, stats: s, score: s[key] || 0 }));
+    arr.sort((a, b) => (descending ? (b.score - a.score) : (a.score - b.score)) || a.name.localeCompare(b.name));
+    let lastScore: number | null = null;
+    return arr.map((item, i) => {
+      let rank = (lastScore === null || item.score !== lastScore) ? i + 1 : i; // if same score, share previous rank (i is previous index)
+      if (lastScore === null) rank = 1;
+      const isTie = (lastScore !== null && item.score === lastScore);
+      lastScore = item.score;
+      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : String(rank);
+      return { ...item, rank, isTie, medal };
+    });
+  };
+
+  const bestGuessers = makeRanked(entries, 'correctMade', true);
+  const leastGuessed = makeRanked(entries, 'correctReceived', false);
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 text-center">
+    <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 rounded-2xl text-center">
       <div className="text-[6rem]">🏆</div>
       <h2 className="text-4xl font-extrabold text-white mb-2 uppercase">RÉSULTATS FINALS</h2>
       <p className="text-indigo-300 mb-6">Résumé — {totalTracks} musiques jouées</p>
@@ -31,14 +46,19 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
             </tr>
           </thead>
           <tbody>
-            {bestGuessers.map(([name, s], i) => {
-          const precision = totalTracks > 0 ? Math.round((s.correct / totalTracks) * 100) : 0;
-          const rowClass = i === 0 ? 'bg-yellow-500/20' : i === 1 ? 'bg-indigo-400/10' : '';
+            {bestGuessers.map((item, i) => {
+          const name = item.name;
+          const s = item.stats || {};
+          const correctMade = s.correctMade || 0;
+          const precision = totalTracks > 0 ? Math.round((correctMade / totalTracks) * 100) : 0;
+          const rowClass = item.rank === 1 ? 'bg-yellow-500/20' : item.rank === 2 ? 'bg-indigo-400/10' : '';
+          const medal = item.medal;
+          const rankLabel = item.isTie ? `${medal}=` : medal;
           return (
             <tr key={name} className={`${rowClass} border-b border-white/5`}>
-              <td className="p-2 font-bold text-white w-12">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
+              <td className="p-2 font-bold text-white w-12">{rankLabel}</td>
               <td className="p-2 text-white font-semibold">{name}</td>
-              <td className="p-2 text-white">{s.correct}</td>
+              <td className="p-2 text-white">{correctMade}</td>
               <td className="p-2 text-white">{precision}%</td>
             </tr>
           );
@@ -52,21 +72,27 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
         <table className="w-full text-left">
           <thead>
             <tr className="text-sm text-indigo-200 uppercase">
-          <th className="p-2">#</th>
-          <th className="p-2">Joueur</th>
-          <th className="p-2">Votes reçus</th>
-          <th className="p-2">Bonnes réponses</th>
+              <th className="p-2 w-12">#</th>
+              <th className="p-2">Joueur</th>
+              <th className="p-2">Bonnes réponses reçues</th>
             </tr>
           </thead>
           <tbody>
-            {leastGuessed.map(([name, s], i) => (
-          <tr key={name} className={`border-b border-white/5`}>
-            <td className="p-2 font-bold text-white w-12">{i + 1}</td>
-            <td className="p-2 text-white font-semibold">{name}</td>
-            <td className="p-2 text-white">{s.timesGuessed}</td>
-            <td className="p-2 text-white">{s.correct}</td>
-          </tr>
-            ))}
+            {leastGuessed.map((item, i) => {
+              const name = item.name;
+              const s = item.stats || {};
+              const received = s.correctReceived || 0;
+              const rowClass = item.rank === 1 ? 'bg-yellow-500/10' : item.rank === 2 ? 'bg-indigo-400/5' : '';
+              const medal = item.medal;
+              const rankLabel = item.isTie ? `${medal}=` : medal;
+              return (
+                <tr key={name} className={`${rowClass} border-b border-white/5`}>
+                  <td className="p-2 font-bold text-white w-12">{rankLabel}</td>
+                  <td className="p-2 text-white font-semibold">{name}</td>
+                  <td className="p-2 text-white">{received}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
           </div>
@@ -74,7 +100,7 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
       ) : (
         <p className="text-indigo-300">Les résultats sont affichés sur l'écran principal.</p>
       )}  <div className="mt-8">
-        <button onClick={onRestart} className="bg-green-500 text-white font-black px-8 py-3 rounded-full text-lg shadow-[0_6px_0_#15803d] hover:scale-105 transition-all">RETOUR AU MENU</button>
+        <button onClick={onRestart} className="bg-green-500 text-white font-black px-8 py-3 rounded-full text-lg shadow-[0_6px_0_#15803d] hover:scale-105 transition-all">REJOUER</button>
       </div>
     </div>
   );
