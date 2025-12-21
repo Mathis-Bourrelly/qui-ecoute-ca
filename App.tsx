@@ -27,7 +27,7 @@ const App: React.FC = () => {
       {role === 'admin' ? (
         <>
           {game.status === 'setup' && <AdminLobby submissions={submissions} game={game} onStart={logic.startGame} setTimer={logic.setRoundTimer} />}
-          {game.status === 'playing' && <AdminGameView game={game} onNext={logic.goToNextTrack} resetGame={logic.resetGame} />}
+          {game.status === 'playing' && <AdminGameView game={game} onNext={logic.nextTrack} resetGame={logic.resetGame} />}
           {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} scores={scores} />}
         </>
       ) : (
