@@ -237,6 +237,28 @@ export const useGameLogic = () => {
     }
   };
 
+  const resetGame = useCallback(() => {
+    setSubmissions([]);
+    setGame(prev => ({
+      ...prev,
+      status: 'setup',
+      currentTrackIndex: 0,
+      shuffledPlaylist: [],
+      votes: {},
+      // Keep existing lobbyCode and participants
+    }));
+    wsClientRef.current?.send({
+      type: 'game:update',
+      payload: {
+        ...gameRef.current, // Use ref to get latest game state
+        status: 'setup',
+        currentTrackIndex: 0,
+        shuffledPlaylist: [],
+        votes: {},
+      }
+    });
+  }, []);
+
   return {
     role,
     playerName,
@@ -251,6 +273,7 @@ export const useGameLogic = () => {
     startGame,
     handleVote,
     nextTrack,
+    resetGame,
     setRoundTimer: (seconds: number) => setGame(prev => ({ ...prev, roundTimer: seconds }))
   };
 };

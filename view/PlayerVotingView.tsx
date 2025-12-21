@@ -43,7 +43,7 @@ const PlayerVotingView: React.FC<PlayerVotingViewProps> = ({ game, playerName, o
           <p className="text-white text-xs md:text-base font-black italic uppercase tracking-tight">Vote enregistré ! Attendons les autres...</p>
         </div>
       ) : (
-        <p className="text-center text-indigo-300 text-[10px] font-bold uppercase italic tracking-widest mt-4">La régie te regarde !</p>
+        <p className="text-center text-indigo-300 text-[10px] font-bold uppercase italic tracking-widest mt-4">Fait ton choix !</p>
       )}
     </div>
   );

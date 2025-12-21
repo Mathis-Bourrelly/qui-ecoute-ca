@@ -5,9 +5,10 @@ import { GameState } from '../types';
 interface AdminGameViewProps {
   game: GameState;
   onNext: () => void;
+  resetGame: () => void;
 }
 
-const AdminGameView: React.FC<AdminGameViewProps> = ({ game, onNext }) => {
+const AdminGameView: React.FC<AdminGameViewProps> = ({ game, onNext, resetGame }) => {
   const [revealed, setRevealed] = useState(false);
   const [timeLeft, setTimeLeft] = useState(game.roundTimer);
   const track = game.shuffledPlaylist[game.currentTrackIndex];
@@ -115,10 +116,15 @@ const AdminGameView: React.FC<AdminGameViewProps> = ({ game, onNext }) => {
               })}
             </div>
             
-            <div className="flex justify-center pt-2">
+            <div className="flex justify-center pt-2 gap-4">
               <button onClick={onNext} className="w-full md:w-auto bg-yellow-400 hover:bg-yellow-300 text-indigo-900 font-black px-8 py-4 md:px-12 md:py-5 rounded-full text-lg md:text-2xl shadow-[0_6px_0_#b45309] md:shadow-[0_8px_0_#b45309] active:translate-y-2 active:shadow-none transition-all uppercase italic border-2 md:border-4 border-white">
                 {isLast ? "RÉSULTATS FINAUX 🏆" : "MUSIQUE SUIVANTE ➔"}
               </button>
+              {isLast && (
+                <button onClick={resetGame} className="w-full md:w-auto bg-green-500 hover:bg-green-400 text-white font-black px-8 py-4 md:px-12 md:py-5 rounded-full text-lg md:text-2xl shadow-[0_6px_0_#166534] md:shadow-[0_8px_0_#166534] active:translate-y-2 active:shadow-none transition-all uppercase italic border-2 md:border-4 border-white">
+                  Rejouer
+                </button>
+              )}
             </div>
           </div>
         ) : (

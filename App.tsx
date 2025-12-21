@@ -27,8 +27,8 @@ const App: React.FC = () => {
       {role === 'admin' ? (
         <>
           {game.status === 'setup' && <AdminLobby submissions={submissions} game={game} onStart={logic.startGame} setTimer={logic.setRoundTimer} />}
-          {game.status === 'playing' && <AdminGameView game={game} onNext={logic.nextTrack} />}
-          {game.status === 'finished' && <FinishedView onRestart={() => window.location.reload()} />}
+          {game.status === 'playing' && <AdminGameView game={game} onNext={logic.goToNextTrack} resetGame={logic.resetGame} />}
+          {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} />}
         </>
       ) : (
         <>
@@ -41,7 +41,7 @@ const App: React.FC = () => {
             />
           )}
           {game.status === 'playing' && <PlayerVotingView game={game} playerName={playerName} onVote={logic.handleVote} />}
-          {game.status === 'finished' && <FinishedView onRestart={() => window.location.reload()} />}
+          {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} />}
         </>
       )}
     </Layout>
