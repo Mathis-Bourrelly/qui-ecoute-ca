@@ -10,6 +10,15 @@ export const useGameLogic = () => {
   
   const [submissions, setSubmissions] = useState<Submission[]>(() => {
     const saved = localStorage.getItem('qui_ecoute_ca_data');
+    const urlParams = new URLSearchParams(window.location.search);
+    const lobbyCodeFromUrl = urlParams.get('code');
+
+    if (lobbyCodeFromUrl) {
+      // If there's a lobby code in the URL, assume a fresh start for submissions.
+      // This helps clear submissions from a previous game if a player joins a new one.
+      return [];
+    }
+
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -46,7 +55,13 @@ export const useGameLogic = () => {
           switch (msg.type) {
             case 'game:update':
             case 'game:start':
-              if (msg.payload) setGame(msg.payload as GameState);
+              if (msg.payload) {
+                const newGameState = msg.payload as GameState;
+                setGame(newGameState);
+                if (newGameState.status === 'setup') {
+                  setSubmissions([]); // Clear player's submissions on game reset
+                }
+              }
               break;
 
             case 'participant:joined': {
@@ -136,7 +151,8 @@ export const useGameLogic = () => {
     setGame(prev => ({ ...prev, lobbyCode: normalized }));
     setRole('player');
     setPlayerName(name);
-    localStorage.setItem('qui_ecoute_ca_name', name);
+    localStorage.setItem('qui_ecoute_ca_name', name);  
+    localStorage.removeItem('qui_ecoute_ca_data'); // Clear submissions from localStorage when a player joins a game
     
     wsClientRef.current?.send({ 
       type: 'participant:joined', 
