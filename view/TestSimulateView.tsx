@@ -116,6 +116,69 @@ const TestSimulateView: React.FC = () => {
     setTimeout(() => { window.location.href = url.toString(); }, 300);
   };
 
+  // Add one music per known participant (reads current game/submissions from localStorage)
+  const addOneTrackPerPlayer = async () => {
+    setStatus('Ajout d\'une musique par joueur...');
+
+    try {
+      const storedGame = JSON.parse(localStorage.getItem('qui_ecoute_ca_game') || 'null');
+      const storedSubs = JSON.parse(localStorage.getItem('qui_ecoute_ca_data') || '[]');
+      const participants: string[] = (storedGame && Array.isArray(storedGame.participants) && storedGame.participants.length) ? storedGame.participants : Array.from(new Set((storedSubs || []).map((s: any) => s.senderName)));
+
+      if (!participants || participants.length === 0) {
+        setStatus('Aucun participant trouvé dans le jeu local.');
+        return;
+      }
+
+      const base = storedSubs || [];
+      const newSubs: any[] = participants.map((name: string, i: number) => {
+        const videoId = sampleVideoIds[(base.length + i) % sampleVideoIds.length];
+        return {
+          id: Math.random().toString(36).slice(2, 9),
+          senderName: name,
+          youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          videoId,
+          videoTitle: `Auto ${name} #${base.length + i + 1}`,
+          startTime: 0,
+          timestamp: Date.now() + i
+        };
+      });
+
+      const merged = [...base, ...newSubs];
+      localStorage.setItem('qui_ecoute_ca_data', JSON.stringify(merged));
+
+      // Notify server per submission if possible
+      try {
+        let ws: WebSocket | null = null;
+        try { ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/`); } catch (e) { ws = null; }
+        if (ws) {
+          const ready = await new Promise<boolean>((resolve) => {
+            const t = setTimeout(() => resolve(false), 2000);
+            ws!.onopen = () => { clearTimeout(t); resolve(true); };
+            ws!.onerror = () => { clearTimeout(t); resolve(false); };
+            ws!.onclose = () => { clearTimeout(t); resolve(false); };
+          });
+
+          if (ready) {
+            for (const s of newSubs) {
+              ws!.send(JSON.stringify({ type: 'submission:new', payload: { lobbyCode: lobby.toUpperCase(), submission: s } }));
+            }
+            setTimeout(() => { try { ws!.close(); } catch {} }, 250);
+            setStatus(`Ajouté ${newSubs.length} musiques (notif. serveur envoyée).`);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('WS notify failed', e);
+      }
+
+      setStatus(`Ajouté ${newSubs.length} musiques (mode local).`);
+    } catch (e) {
+      console.error(e);
+      setStatus('Erreur lors de l\'ajout des musiques.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0b1226] flex items-center justify-center p-6">
       <div className="w-full max-w-2xl bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-2xl shadow-xl text-white">
@@ -137,6 +200,9 @@ const TestSimulateView: React.FC = () => {
           </button>
           <button onClick={() => { localStorage.removeItem('qui_ecoute_ca_data'); localStorage.removeItem('qui_ecoute_ca_game'); window.location.reload(); }} className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded">
             Réinitialiser
+          </button>
+          <button onClick={addOneTrackPerPlayer} className="bg-blue-500 hover:bg-blue-400 text-white font-bold px-4 py-2 rounded">
+            Ajouter 1 musique par joueur
           </button>
         </div>
 

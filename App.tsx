@@ -32,7 +32,7 @@ const App: React.FC = () => {
     <Layout lobbyCode={game.lobbyCode} onReset={() => window.location.reload()}>
       {role === 'admin' ? (
         <>
-          {game.status === 'setup' && <AdminLobby submissions={submissions} game={game} onStart={logic.startGame} setTimer={logic.setRoundTimer} onAutoAddForAll={logic.generateSubmissionForAll} />}
+          {game.status === 'setup' && <AdminLobby submissions={submissions} game={game} onStart={logic.startGame} setTimer={logic.setRoundTimer} />}
           {game.status === 'playing' && <AdminGameView game={game} onNext={logic.nextTrack} resetGame={logic.resetGame} />}
           {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} scores={scores} totalTracks={(game.shuffledPlaylist || []).length || submissions.length} />}
         </>
