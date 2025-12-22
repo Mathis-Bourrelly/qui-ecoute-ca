@@ -271,11 +271,14 @@ const TestSimulateView: React.FC = () => {
           <button onClick={addOneTrackPerPlayer} className="bg-blue-500 hover:bg-blue-400 text-white font-bold px-4 py-2 rounded">
             Ajouter 1 musique par joueur
           </button>
+          <button onClick={randomVoteAll} className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2 rounded">
+            Faire voter tous les joueurs
+          </button>
         </div>
 
         {status && <p className="mt-4 text-sm opacity-90">{status}</p>}
 
-        <p className="mt-4 text-sm opacity-80">Après génération, la page va se recharger et l'application utilisera les données simulées. Utilisez <strong>?dev_simulate=1</strong> pour rester sur cette vue.</p>
+        <p className="mt-4 text-sm opacity-80">Les données sont sauvegardées localement et notifiées au serveur si disponible. Utilisez <strong>?dev_simulate=1</strong> pour rester sur cette vue.</p>
       </div>
     </div>
   );
