@@ -22,7 +22,9 @@ const TestSimulateView: React.FC = () => {
   const [autoStart, setAutoStart] = useState<boolean>(false);
   const [lobby, setLobby] = useState<string>('SIM');
 
-  const generate = () => {
+  const [status, setStatus] = useState<string | null>(null);
+
+  const generate = async () => {
     const players = Array.from({ length: count }, (_, i) => `PLAYER_${String(i + 1).padStart(2, '0')}`);
 
     const submissions = players.map((name, i) => ({
@@ -45,14 +47,73 @@ const TestSimulateView: React.FC = () => {
       roundTimer: 30
     } as any;
 
+    // Persist locally first so the app in the same tab reads it immediately
     localStorage.setItem('qui_ecoute_ca_data', JSON.stringify(submissions));
     localStorage.setItem('qui_ecoute_ca_game', JSON.stringify(game));
+
+    // Try to notify the running WebSocket server so other tabs (host) get updates
+    setStatus('Connexion au serveur WS...');
+    try {
+      const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const wsUrl = `${proto}://${window.location.host.replace(/:\d+$/, '')}:${window.location.port || '3001'}/ws/`;
+      // Fallback to host origin path if that fails
+      let ws: WebSocket | null = null;
+
+      try {
+        ws = new WebSocket(`${proto}://${window.location.host}/ws/`);
+      } catch (e) {
+        try {
+          ws = new WebSocket(wsUrl);
+        } catch (e2) {
+          ws = null;
+        }
+      }
+
+      if (ws) {
+        const ready = await new Promise<boolean>((resolve) => {
+          const t = setTimeout(() => resolve(false), 2500);
+          ws!.onopen = () => { clearTimeout(t); resolve(true); };
+          ws!.onclose = () => { clearTimeout(t); resolve(false); };
+          ws!.onerror = () => { clearTimeout(t); resolve(false); };
+        });
+
+        if (ready) {
+          setStatus('Envoi des événements de simulation...');
+
+          // Send participant joined for each player
+          players.forEach(name => {
+            ws!.send(JSON.stringify({ type: 'participant:joined', payload: { name, lobbyCode: lobby.toUpperCase() } }));
+          });
+
+          // Send bulk submissions
+          ws!.send(JSON.stringify({ type: 'submission:bulk', payload: { lobbyCode: lobby.toUpperCase(), submissions } }));
+
+          // If autoStart, send game:start
+          if (autoStart) {
+            ws!.send(JSON.stringify({ type: 'game:start', payload: game }));
+          } else {
+            // also send a game:update so host registers participants list
+            ws!.send(JSON.stringify({ type: 'game:update', payload: game }));
+          }
+
+          setTimeout(() => { try { ws!.close(); } catch {} }, 300);
+        } else {
+          setStatus('Connexion WS impossible, utilisation locale only.');
+        }
+      } else {
+        setStatus('Impossible d\'ouvrir WS – utilisation locale only.');
+      }
+    } catch (e) {
+      console.warn('WS error', e);
+      setStatus('Erreur lors de l\'envoi WS — utilisation locale only.');
+    }
 
     const url = new URL(window.location.href);
     url.searchParams.set('code', lobby.toUpperCase());
     // keep developer flag so the page stays on the test view after reload
     url.searchParams.set('dev_simulate', '1');
-    window.location.href = url.toString();
+    // small delay so status can update visually before reload
+    setTimeout(() => { window.location.href = url.toString(); }, 300);
   };
 
   return (
@@ -78,6 +139,8 @@ const TestSimulateView: React.FC = () => {
             Réinitialiser
           </button>
         </div>
+
+        {status && <p className="mt-4 text-sm opacity-90">{status}</p>}
 
         <p className="mt-4 text-sm opacity-80">Après génération, la page va se recharger et l'application utilisera les données simulées. Utilisez <strong>?dev_simulate=1</strong> pour rester sur cette vue.</p>
       </div>
