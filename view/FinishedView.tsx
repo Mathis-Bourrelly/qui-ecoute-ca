@@ -53,7 +53,7 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
           const precision = totalTracks > 0 ? Math.round((correctMade / totalTracks) * 100) : 0;
           const rowClass = item.rank === 1 ? 'bg-yellow-500/20' : item.rank === 2 ? 'bg-indigo-400/10' : '';
           const medal = item.medal;
-          const rankLabel = item.isTie ? `${medal}=` : medal;
+          const rankLabel = item.isTie ? `${medal}` : medal;
           return (
             <tr key={name} className={`${rowClass} border-b border-white/5`}>
               <td className="p-2 font-bold text-white w-12">{rankLabel}</td>
@@ -82,9 +82,9 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
               const name = item.name;
               const s = item.stats || {};
               const received = s.correctReceived || 0;
-              const rowClass = item.rank === 1 ? 'bg-yellow-500/10' : item.rank === 2 ? 'bg-indigo-400/5' : '';
+              const rowClass = item.rank === 1 ? 'bg-yellow-500/20' : item.rank === 2 ? 'bg-indigo-400/10' : item.rank === 3 ? 'bg-orange-500/20' : '';
               const medal = item.medal;
-              const rankLabel = item.isTie ? `${medal}=` : medal;
+              const rankLabel = item.isTie ? `${medal}` : medal;
               return (
                 <tr key={name} className={`${rowClass} border-b border-white/5`}>
                   <td className="p-2 font-bold text-white w-12">{rankLabel}</td>
