@@ -115,14 +115,17 @@ wss.on('connection', (ws, req) => {
                 }
               }
 
-              // Send scores only back to the sender (host/admin) so only they see final scores
+              // Send scores back to the sender (host/admin)
               try {
-                const msg = JSON.stringify({ type: 'scores:update', payload: { lobbyCode: lobby, scores } });
+                const msgObj = { type: 'scores:update', payload: { lobbyCode: lobby, scores } };
+                const msg = JSON.stringify(msgObj);
                 if (ws && ws.readyState === ws.OPEN) {
                   ws.send(msg);
                 }
+                // Also broadcast to other clients to ensure UI gets the values (helps avoid client-specific routing issues)
+                broadcast(msgObj, ws);
               } catch (e) {
-                console.warn('failed to send scores to sender', e);
+                console.warn('failed to send/broadcast scores', e);
               }
             }
           } catch (e) {

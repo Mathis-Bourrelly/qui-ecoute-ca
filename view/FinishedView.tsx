@@ -30,7 +30,7 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
   return (
     <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 rounded-2xl text-center">
       <div className="text-[6rem]">🏆</div>
-      <h2 className="text-4xl font-extrabold text-white mb-2 uppercase">RÉSULTATS FINALS</h2>
+      <h2 className="text-4xl font-extrabold text-white mb-2 uppercase">RÉSULTATS FINAUX</h2>
       <p className="text-indigo-300 mb-6">Résumé — {totalTracks} musiques jouées</p>
       {entries.length > 0 ? (
         <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
