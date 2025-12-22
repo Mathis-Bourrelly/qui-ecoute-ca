@@ -51,7 +51,7 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
           const s = item.stats || {};
           const correctMade = s.correctMade || 0;
           const precision = totalTracks > 0 ? Math.round((correctMade / totalTracks) * 100) : 0;
-          const rowClass = item.rank === 1 ? 'bg-yellow-500/20' : item.rank === 2 ? 'bg-indigo-400/10' : '';
+          const rowClass = item.rank === 1 ? 'bg-yellow-500/20' : item.rank === 2 ? 'bg-indigo-400/10' : item.rank === 3 ? 'bg-orange-500/20' : '';
           const medal = item.medal;
           const rankLabel = item.isTie ? `${medal}` : medal;
           return (
@@ -99,9 +99,7 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
         </div>
       ) : (
         <p className="text-indigo-300">Les résultats sont affichés sur l'écran principal.</p>
-      )}  <div className="mt-8">
-        <button onClick={onRestart} className="bg-green-500 text-white font-black px-8 py-3 rounded-full text-lg shadow-[0_6px_0_#15803d] hover:scale-105 transition-all">REJOUER</button>
-      </div>
+      )}
     </div>
   );
 };
