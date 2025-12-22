@@ -9,10 +9,16 @@ import PlayerVotingView from './view/PlayerVotingView';
 import FinishedView from './view/FinishedView';
 import ErrorModal from './component/ErrorModal';
 import Layout from './component/Layout';
+import TestSimulateView from './view/TestSimulateView';
 
 const App: React.FC = () => {
   const logic = useGameLogic();
   const { role, game, submissions, playerName, errorMessage, scores } = logic;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('dev_simulate') === '1') {
+    return <TestSimulateView />;
+  }
 
   if (errorMessage) {
     return <ErrorModal message={errorMessage} onClose={() => logic.setErrorMessage(null)} />;
