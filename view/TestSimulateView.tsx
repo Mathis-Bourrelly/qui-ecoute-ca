@@ -108,12 +108,15 @@ const TestSimulateView: React.FC = () => {
       setStatus('Erreur lors de l\'envoi WS — utilisation locale only.');
     }
 
-    const url = new URL(window.location.href);
-    url.searchParams.set('code', lobby.toUpperCase());
-    // keep developer flag so the page stays on the test view after reload
-    url.searchParams.set('dev_simulate', '1');
-    // small delay so status can update visually before reload
-    setTimeout(() => { window.location.href = url.toString(); }, 300);
+      // keep developer flag so the page stays on the test view if opened again
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('code', lobby.toUpperCase());
+        url.searchParams.set('dev_simulate', '1');
+        window.history.replaceState({}, document.title, url.toString());
+      } catch {}
+
+      setStatus('Génération terminée — notifications envoyées si WS disponible.');
   };
 
   // Add one music per known participant (reads current game/submissions from localStorage)
@@ -176,6 +179,70 @@ const TestSimulateView: React.FC = () => {
     } catch (e) {
       console.error(e);
       setStatus('Erreur lors de l\'ajout des musiques.');
+    }
+  };
+
+  // Faire voter tous les joueurs aléatoirement pour la piste courante
+  const randomVoteAll = async () => {
+    setStatus('Envoi des votes aléatoires...');
+
+    try {
+      const storedGame = JSON.parse(localStorage.getItem('qui_ecoute_ca_game') || 'null');
+      const storedSubs = JSON.parse(localStorage.getItem('qui_ecoute_ca_data') || '[]');
+      const participants: string[] = (storedGame && Array.isArray(storedGame.participants) && storedGame.participants.length) ? storedGame.participants : Array.from(new Set((storedSubs || []).map((s: any) => s.senderName)));
+
+      if (!participants || participants.length === 0) {
+        setStatus('Aucun participant trouvé pour voter.');
+        return;
+      }
+
+      const trackIndex = (storedGame && typeof storedGame.currentTrackIndex === 'number') ? storedGame.currentTrackIndex : 0;
+
+      // Build votes: each participant votes randomly among participant names
+      const votes = participants.map(voter => {
+        const guessed = participants[Math.floor(Math.random() * participants.length)];
+        return { voterName: voter, guessedName: guessed };
+      });
+
+      // Update local game object votes (merge)
+      try {
+        const g = storedGame || { lobbyCode: lobby.toUpperCase(), votes: {} };
+        if (!g.votes) g.votes = {};
+        g.votes[trackIndex] = Array.from(new Set([...(g.votes[trackIndex] || []), ...votes].map(JSON.stringify))).map(JSON.parse);
+        localStorage.setItem('qui_ecoute_ca_game', JSON.stringify(g));
+      } catch (e) {
+        console.warn('failed to merge local votes', e);
+      }
+
+      // Try to notify server for each vote
+      try {
+        let ws: WebSocket | null = null;
+        try { ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/`); } catch (e) { ws = null; }
+        if (ws) {
+          const ready = await new Promise<boolean>((resolve) => {
+            const t = setTimeout(() => resolve(false), 2000);
+            ws!.onopen = () => { clearTimeout(t); resolve(true); };
+            ws!.onerror = () => { clearTimeout(t); resolve(false); };
+            ws!.onclose = () => { clearTimeout(t); resolve(false); };
+          });
+
+          if (ready) {
+            for (const v of votes) {
+              ws!.send(JSON.stringify({ type: 'vote:new', payload: { lobbyCode: lobby.toUpperCase(), trackIndex, vote: v } }));
+            }
+            setTimeout(() => { try { ws!.close(); } catch {} }, 250);
+            setStatus(`Votes envoyés (${votes.length}) et stockés localement.`);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('WS notify failed', e);
+      }
+
+      setStatus(`Votes stockés localement (${votes.length}).`);
+    } catch (e) {
+      console.error(e);
+      setStatus('Erreur lors de l\'envoi des votes.');
     }
   };
 
