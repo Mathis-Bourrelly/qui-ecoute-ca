@@ -263,6 +263,44 @@ export const useGameLogic = () => {
     }
   };
 
+  // Génère une soumission aléatoire pour chaque participant (utilisé par l'admin pour tests)
+  const generateSubmissionForAll = (overrideVideoIds?: string[]) => {
+    const sampleVideoIds = overrideVideoIds || [
+      'dQw4w9WgXcQ', '3JZ_D3ELwOQ', 'V-_O7nl0Ii0', 'fJ9rUzIMcZQ', 'kXYiU_JCYtU',
+      '60ItHLz5WEA', '09R8_2nJtjg', 'YQHsXMglC9A', 'RgKAFK5djSk', 'eVTXPUF4Oz4'
+    ];
+
+    const newSubs: Submission[] = (game.participants || []).map((name, i) => {
+      const videoId = sampleVideoIds[i % sampleVideoIds.length];
+      const sub: Submission = {
+        id: Math.random().toString(36).substr(2, 9),
+        senderName: name,
+        youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+        videoId,
+        videoTitle: `Auto ${name}`,
+        startTime: 0,
+        timestamp: Date.now() + i
+      };
+      return sub;
+    });
+
+    if (newSubs.length === 0) return;
+
+    // Update local submissions state with new entries (avoid duplicates)
+    setSubmissions(prev => {
+      const merged = [...prev];
+      for (const s of newSubs) {
+        if (!merged.some(x => x.id === s.id)) merged.push(s);
+      }
+      return merged;
+    });
+
+    // Persist and notify server per submission
+    for (const s of newSubs) {
+      wsClientRef.current?.send({ type: 'submission:new', payload: { lobbyCode: game.lobbyCode, submission: s } });
+    }
+  };
+
   const resetGame = useCallback(() => {
     setSubmissions([]);
     setGame(prev => ({
@@ -298,6 +336,7 @@ export const useGameLogic = () => {
     handleCreateGame,
     handleJoinGame,
     addSubmission,
+    generateSubmissionForAll,
     startGame,
     handleVote,
     nextTrack,

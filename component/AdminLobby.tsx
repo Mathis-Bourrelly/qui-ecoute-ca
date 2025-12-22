@@ -7,6 +7,7 @@ interface AdminLobbyProps {
   game: GameState;
   onStart: () => void;
   setTimer: (seconds: number) => void;
+  onAutoAddForAll?: () => void;
 }
 
 const AdminLobby: React.FC<AdminLobbyProps> = ({ submissions, game, onStart, setTimer }) => {
@@ -66,13 +67,23 @@ const AdminLobby: React.FC<AdminLobbyProps> = ({ submissions, game, onStart, set
             ))
           )}
         </div>
-        <button 
-          onClick={onStart} 
-          disabled={submissions.length === 0} 
-          className="w-full bg-green-500 hover:bg-green-400 text-indigo-900 font-black py-6 rounded-[2rem] shadow-[0_10px_0_#15803d] text-2xl uppercase italic active:translate-y-2 transition-all disabled:opacity-50"
-        >
-          LANCER L'ÉMISSION ! 🎬
-        </button>
+        <div className="flex flex-col gap-3">
+          <button 
+            onClick={() => onAutoAddForAll && onAutoAddForAll()} 
+            disabled={(game.participants || []).length === 0}
+            className="w-full bg-blue-500 hover:bg-blue-400 text-white font-black py-3 rounded-[1.25rem] shadow-[0_8px_0_#1e40af] text-lg uppercase italic active:translate-y-1 transition-all disabled:opacity-50"
+          >
+            Ajouter 1 musique par joueur
+          </button>
+
+          <button 
+            onClick={onStart} 
+            disabled={submissions.length === 0} 
+            className="w-full bg-green-500 hover:bg-green-400 text-indigo-900 font-black py-6 rounded-[2rem] shadow-[0_10px_0_#15803d] text-2xl uppercase italic active:translate-y-2 transition-all disabled:opacity-50"
+          >
+            LANCER L'ÉMISSION ! 🎬
+          </button>
+        </div>
       </div>
 
       <div className="bg-indigo-900/50 p-8 rounded-[3rem] border-4 border-indigo-800 flex flex-col items-center text-center shadow-xl">
