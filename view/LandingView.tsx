@@ -14,7 +14,7 @@ const LandingView: React.FC<LandingViewProps> = ({ onCreate, onJoin }) => {
   return (
     <div className="min-h-screen bg-[#1e1b4b] flex flex-col items-center justify-center p-6 text-center">
       <div className="relative mb-12 animate-soft-bounce">
-        <h1 className="text-6xl md:text-9xl font-black text-white italic uppercase tracking-tighter leading-none">
+        <h1 className="text-6xl md:text-8xl font-black text-white italic uppercase tracking-tighter leading-none">
           <span className="block text-yellow-400 drop-shadow-[0_5px_0_#b45309]">QUI</span>
           <span className="block text-white drop-shadow-[0_5px_0_#4f46e5]">ÉCOUTE</span>
           <span className="block text-orange-500 drop-shadow-[0_5px_0_#9a3412]">ÇA ?</span>
