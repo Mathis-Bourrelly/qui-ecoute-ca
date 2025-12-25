@@ -70,6 +70,8 @@ wss.on('connection', (ws, req) => {
           if (!lobby) break;
           const s = ensureLobby(lobby);
           s.game = g;
+          // Debug: show current lobbies after an update
+          try { console.log('lobbies after game:update ->', Array.from(games.keys())); } catch (e) {}
           // keep existing submissions if present
           broadcast({ type: 'game:update', payload: g }, ws);
 
@@ -137,6 +139,8 @@ wss.on('connection', (ws, req) => {
         case 'participant:joined': {
           const { name, lobbyCode } = payload || {};
           const lobby = (lobbyCode || '').toString().trim().toUpperCase();
+          // Debug: show known lobbies when a participant attempts to join
+          try { console.log('participant:joined for', lobby, 'known lobbies ->', Array.from(games.keys())); } catch (e) {}
           // Do not create a new lobby when a participant attempts to join — require the lobby to exist.
           if (!games.has(lobby)) {
             try {
