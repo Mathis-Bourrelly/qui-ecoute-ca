@@ -72,6 +72,9 @@ export const useGameLogic = () => {
             case 'game:start':
               if (msg.payload) {
                     const newGameState = msg.payload as GameState & { _reset?: boolean };
+                    const incomingLobby = (newGameState.lobbyCode || '').toString().trim().toUpperCase();
+                    // Ignore updates for other lobbies to avoid replacing the current lobby
+                    if (!incomingLobby || incomingLobby !== currentLobby) break;
                     setGame(newGameState);
                     // Only clear submissions when payload explicitly marks a reset (_reset === true)
                     if (newGameState.status === 'setup' && (newGameState as any)._reset === true) {
