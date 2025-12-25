@@ -204,15 +204,11 @@ const TestSimulateView: React.FC = () => {
         return { voterName: voter, guessedName: guessed };
       });
 
-      // Update local game object votes (merge)
-      try {
-        const g = storedGame || { lobbyCode: lobby.toUpperCase(), votes: {} };
-        if (!g.votes) g.votes = {};
-        g.votes[trackIndex] = Array.from(new Set([...(g.votes[trackIndex] || []), ...votes].map(JSON.stringify))).map(JSON.parse);
-        localStorage.setItem('qui_ecoute_ca_game', JSON.stringify(g));
-      } catch (e) {
-        console.warn('failed to merge local votes', e);
-      }
+      // Update local game object votes (replace)
+      const g = storedGame;
+      if (!g.votes) g.votes = {};
+      g.votes[trackIndex] = votes;
+      localStorage.setItem('qui_ecoute_ca_game', JSON.stringify(g));
 
       // Try to notify server for each vote
       try {
