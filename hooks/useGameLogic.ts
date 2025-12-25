@@ -391,34 +391,6 @@ export const useGameLogic = () => {
     });
   }, []);
 
-  const leaveGame = useCallback(() => {
-    try {
-      // Clear persisted role and other local data so a reload shows the landing view
-      setPersistedRole('none');
-      setPlayerName('');
-      setSubmissions([]);
-      setGame({
-        status: 'setup',
-        currentTrackIndex: 0,
-        shuffledPlaylist: [],
-        lobbyCode: '',
-        participants: [],
-        votes: {},
-        roundTimer: 30,
-      });
-      // Remove stored items
-      try {
-        localStorage.removeItem('qui_ecoute_ca_name');
-        localStorage.removeItem('qui_ecoute_ca_data');
-        localStorage.removeItem('qui_ecoute_ca_game');
-      } catch (e) {}
-      // Close websocket connection if any
-      wsClientRef.current?.close();
-    } catch (e) {
-      console.warn('leaveGame error', e);
-    }
-  }, []);
-
   return {
     role,
     playerName,
@@ -436,7 +408,6 @@ export const useGameLogic = () => {
     handleVote,
     nextTrack,
     resetGame,
-    leaveGame,
     setRoundTimer: (seconds: number) => setGame(prev => ({ ...prev, roundTimer: seconds }))
   };
 };

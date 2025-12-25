@@ -29,7 +29,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <Layout lobbyCode={game.lobbyCode} onReset={logic.leaveGame}>
+    <Layout lobbyCode={game.lobbyCode} onReset={() => window.location.reload()}>
       {role === 'admin' ? (
         <>
           {game.status === 'setup' && <AdminLobby submissions={submissions} game={game} onStart={logic.startGame} setTimer={logic.setRoundTimer} />}
