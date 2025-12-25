@@ -7,8 +7,9 @@ interface FinishedViewProps {
   totalTracks?: number;
 }
 
+
 const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTracks = 0 }) => {
-  const entries = scores ? Object.entries(scores) : [];
+  const entries = scores && Object.keys(scores).length > 0 ? Object.entries(scores) : [];
 
   const makeRanked = (entriesList: [string, any][], key: string, descending = true) => {
     const arr = entriesList.slice().map(([name, s]) => ({ name, stats: s, score: s[key] || 0 }));
@@ -32,7 +33,7 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
       <div className="text-[6rem]">🏆</div>
       <h2 className="text-4xl font-extrabold text-white mb-2 uppercase">RÉSULTATS FINAUX</h2>
       <p className="text-indigo-300 mb-6">Résumé : {totalTracks} musiques jouées</p>
-      {entries.length > 0 ? (
+      {scores && entries.length > 0 ? (
         <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="bg-white/5 rounded-xl p-4">
         <h3 className="text-lg text-white font-bold mb-3">Meilleurs devineurs</h3>
@@ -96,7 +97,14 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
           </tbody>
         </table>
           </div>
+                            <button 
+                    onClick={onRestart} 
+                    className="w-full bg-green-500 hover:bg-green-400 text-white font-black py-3 rounded-full text-xl shadow-[0_4px_0_#166534] active:translate-y-1 active:shadow-none transition-all uppercase italic border-4 border-white"
+                  >
+                    REJOUER
+                  </button>
         </div>
+        
       ) : (
         <p className="text-indigo-300">Les résultats sont affichés sur l'écran principal.</p>
       )}

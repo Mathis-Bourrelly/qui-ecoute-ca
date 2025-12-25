@@ -3,7 +3,7 @@ import { Submission, GameState, UserRole, Vote } from '../types';
 import { extractVideoId, extractTimecode, shuffleArray, generateLobbyCode, createWebSocketClient, WSMessage } from '../utils';
 
 export const useGameLogic = () => {
-  const [role, setRole] = useState<UserRole>('none');
+  const [role, setRole] = useState<UserRole>(() => (localStorage.getItem('qui_ecoute_ca_role') as UserRole) || 'none');
   const [playerName, setPlayerName] = useState<string>(localStorage.getItem('qui_ecoute_ca_name') || '');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoadingTitle, setIsLoadingTitle] = useState(false);
@@ -48,19 +48,36 @@ export const useGameLogic = () => {
   }, [game]);
 
   useEffect(() => { roleRef.current = role; }, [role]);
+  // Persist role in localStorage so a reload/reconnect can remember admin/player
+  const setPersistedRole = (r: UserRole) => {
+    setRole(r);
+    try {
+      if (r === 'none') {
+        localStorage.removeItem('qui_ecoute_ca_role');
+      } else {
+        localStorage.setItem('qui_ecoute_ca_role', r);
+      }
+    } catch (e) {}
+  };
   useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
 
   // Initialisation du WebSocket
   useEffect(() => {
     wsClientRef.current = createWebSocketClient({
       onOpen: () => {
-        // If we were previously a player, announce ourselves again on reconnect
-        const name = playerNameRef.current;
-        const lobby = (gameRef.current?.lobbyCode || '').toString().trim().toUpperCase();
-        if (roleRef.current === 'player' && name && lobby) {
-          wsClientRef.current?.send({ type: 'participant:joined', payload: { name, lobbyCode: lobby } });
-        }
-      },
+          // Re-announce ourselves on reconnect depending on persisted role
+          const name = playerNameRef.current;
+          const lobby = (gameRef.current?.lobbyCode || '').toString().trim().toUpperCase();
+          if (roleRef.current === 'player' && name && lobby) {
+            wsClientRef.current?.send({ type: 'participant:joined', payload: { name, lobbyCode: lobby } });
+          }
+          if (roleRef.current === 'admin' && lobby) {
+            // re-send current game state to re-assert admin presence
+            try {
+              wsClientRef.current?.send({ type: 'game:update', payload: gameRef.current });
+            } catch (e) {}
+          }
+        },
       onMessage: (msg: WSMessage) => {
         try {
           if (!msg || !msg.type) return;
@@ -75,7 +92,7 @@ export const useGameLogic = () => {
                 // If the server reports a lobby error for our current lobby, reset local join state
                 const currentLobby = (gameRef.current?.lobbyCode || '').toString().trim().toUpperCase();
                 if (lobbyCode && lobbyCode.toString().trim().toUpperCase() === currentLobby) {
-                  setRole('none');
+                  setPersistedRole('none');
                   setGame(prev => ({ ...prev, lobbyCode: '' }));
                 }
               } catch (e) {}
@@ -196,7 +213,7 @@ export const useGameLogic = () => {
     };
     setGame(newGame);
     setSubmissions([]);
-    setRole('admin');
+    setPersistedRole('admin');
     wsClientRef.current?.send({ type: 'game:update', payload: newGame });
   };
 
@@ -209,7 +226,7 @@ export const useGameLogic = () => {
     }
     // On met à jour le lobbyCode local pour permettre la réception des messages
     setGame(prev => ({ ...prev, lobbyCode: normalized }));
-    setRole('player');
+    setPersistedRole('player');
     setPlayerName(name);
     localStorage.setItem('qui_ecoute_ca_name', name);  
     localStorage.removeItem('qui_ecoute_ca_data'); // Clear submissions from localStorage when a player joins a game
