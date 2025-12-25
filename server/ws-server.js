@@ -136,8 +136,17 @@ wss.on('connection', (ws, req) => {
 
         case 'participant:joined': {
           const { name, lobbyCode } = payload || {};
-          const s = ensureLobby(lobbyCode);
-          if (!s) break;
+          const lobby = (lobbyCode || '').toString().trim().toUpperCase();
+          // Do not create a new lobby when a participant attempts to join — require the lobby to exist.
+          if (!games.has(lobby)) {
+            try {
+              ws.send(JSON.stringify({ type: 'error', payload: { message: 'Lobby introuvable', lobbyCode: lobby } }));
+            } catch (e) {
+              console.warn('failed to send lobby-not-found to client', e);
+            }
+            break;
+          }
+          const s = games.get(lobby);
           s.game.participants = Array.from(new Set([...(s.game.participants || []), name]));
           broadcast({ type: 'game:update', payload: s.game }, ws);
           break;

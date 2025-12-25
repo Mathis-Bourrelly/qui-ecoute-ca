@@ -68,6 +68,19 @@ export const useGameLogic = () => {
           const currentLobby = (gameRef.current?.lobbyCode || '').toString().trim().toUpperCase();
 
           switch (msg.type) {
+            case 'error': {
+              try {
+                const { message, lobbyCode } = msg.payload || {};
+                if (message) setErrorMessage(message);
+                // If the server reports a lobby error for our current lobby, reset local join state
+                const currentLobby = (gameRef.current?.lobbyCode || '').toString().trim().toUpperCase();
+                if (lobbyCode && lobbyCode.toString().trim().toUpperCase() === currentLobby) {
+                  setRole('none');
+                  setGame(prev => ({ ...prev, lobbyCode: '' }));
+                }
+              } catch (e) {}
+              break;
+            }
             case 'game:update':
             case 'game:start':
               if (msg.payload) {
