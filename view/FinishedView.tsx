@@ -99,12 +99,15 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
           </tbody>
         </table>
           </div>
-                            <button 
-                    onClick={onRestart} 
-                    className="w-full bg-green-500 hover:bg-green-400 text-white font-black py-3 rounded-full text-xl shadow-[0_4px_0_#166534] active:translate-y-1 active:shadow-none transition-all uppercase italic border-4 border-white"
-                  >
-                    REJOUER
-                  </button>
+
+          <div className="col-span-2 w-full flex justify-center">
+            <button
+              onClick={onRestart}
+              className="mx-auto bg-green-500 hover:bg-green-400 text-white font-black py-3 px-8 rounded-full text-xl shadow-[0_4px_0_#166534] active:translate-y-1 active:shadow-none transition-all uppercase italic border-4 border-white max-w-xs w-full sm:w-auto"
+            >
+              REJOUER
+            </button>
+          </div>
         </div>
         
       ) : (
