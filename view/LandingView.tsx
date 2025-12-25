@@ -54,9 +54,6 @@ const LandingView: React.FC<LandingViewProps> = ({ onCreate, onJoin }) => {
           </button>
         </div>
       </div>
-      <div className="mt-8 text-sm text-indigo-200">
-        <a href="#/test" className="underline hover:text-indigo-100">Page de test (simulation)</a>
-      </div>
     </div>
   );
 };

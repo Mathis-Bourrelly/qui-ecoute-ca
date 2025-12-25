@@ -252,9 +252,6 @@ const TestSimulateView: React.FC = () => {
 
           <label className="text-sm opacity-80">Code de plateau</label>
           <input value={lobby} onChange={e => setLobby(e.target.value)} className="bg-slate-700 p-2 rounded" />
-
-          <label className="text-sm opacity-80">Démarrer la partie automatiquement</label>
-          <input type="checkbox" checked={autoStart} onChange={e => setAutoStart(e.target.checked)} />
         </div>
 
         <div className="flex gap-3">
