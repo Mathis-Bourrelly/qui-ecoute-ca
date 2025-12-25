@@ -31,7 +31,7 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
   const leastGuessed = makeRanked(entries, 'correctReceived', false);
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 rounded-2xl text-center">
+    <div className="h-full w-full bg-[#0f172a] flex flex-col items-center justify-start pt-6 px-4 pb-6 rounded-2xl text-center overflow-auto">
       <div className="text-[6rem]">🏆</div>
       <h2 className="text-4xl font-extrabold text-white mb-2 uppercase">RÉSULTATS FINAUX</h2>
       <p className="text-indigo-300 mb-6">Résumé : {totalTracks} musiques jouées</p>
@@ -108,7 +108,7 @@ const FinishedView: React.FC<FinishedViewProps> = ({ onRestart, scores, totalTra
         </div>
         
       ) : (
-        <p className="text-indigo-300">Les résultats sont visibles uniquement depuis la vue administrateur.</p>
+        <p className="text-indigo-300">Les résultats sont visibles sur la TV !</p>
       )}
     </div>
   );
