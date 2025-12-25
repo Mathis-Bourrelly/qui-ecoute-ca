@@ -60,6 +60,7 @@ const App: React.FC = () => {
         <Route path="/" element={<LandingView onCreate={() => { logic.handleCreateGame(); window.location.hash = '#/admin'; }} onJoin={(code, name) => { logic.handleJoinGame(code, name); window.location.hash = '#/player'; }} />} />
         <Route path="/admin" element={role === 'admin' ? <AdminArea logic={logic} /> : <Navigate to="/" replace />} />
         <Route path="/player" element={role === 'player' ? <PlayerArea logic={logic} /> : <Navigate to="/" replace />} />
+        <Route path="/test" element={<TestSimulateView />} />
         <Route path="/finished" element={role === 'admin' ? <AdminArea logic={logic} /> : role === 'player' ? <PlayerArea logic={logic} /> : <Navigate to="/" replace />} />
         <Route path="*" element={role === 'none' ? <Navigate to="/" replace /> : role === 'admin' ? <Navigate to="/admin" replace /> : <Navigate to="/player" replace />} />
       </Routes>
