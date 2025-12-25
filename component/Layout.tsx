@@ -19,7 +19,7 @@ const Layout: React.FC<LayoutProps> = ({ lobbyCode, onReset, children }) => {
   };
 
   return (
-    <div className="h-screen w-screen bg-[#1e1b4b] text-white flex flex-col font-bold overflow-hidden p-4 md:p-6">
+  <div className="min-h-screen w-screen bg-[#1e1b4b] text-white flex flex-col font-bold overflow-y-auto p-4 md:p-6">
       <div className="w-full h-full flex flex-col max-w-[1600px] mx-auto">
         {/* Header compact */}
         <header className="flex justify-between items-center mb-4 bg-gradient-to-r from-yellow-400 to-orange-500 p-4 rounded-3xl shadow-2xl border-b-4 border-orange-700 shrink-0">

@@ -42,7 +42,7 @@ const AdminGameView: React.FC<AdminGameViewProps> = ({ game, onNext, resetGame }
   }, [votes]);
 
   return (
-    <div className="flex flex-col h-full gap-4 animate-in fade-in duration-700">
+  <div className="flex flex-col min-h-screen gap-4 animate-in fade-in duration-700 overflow-y-auto">
       
       {/* 1. BARRE DE STATUT (TIMER) - PLEINE LARGEUR EN HAUT */}
       <div className="shrink-0 flex justify-between items-center bg-indigo-900/80 p-4 rounded-2xl border-2 border-indigo-700 relative overflow-hidden shadow-xl">
