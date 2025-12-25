@@ -189,6 +189,11 @@ export const useGameLogic = () => {
 
   const handleJoinGame = (code: string, name: string) => {
     const normalized = code.trim().toUpperCase();
+    // Validate lobby code: must be exactly 4 digits
+    if (!/^[0-9]{4}$/.test(normalized)) {
+      setErrorMessage('Le code de lobby doit contenir exactement 4 chiffres.');
+      return;
+    }
     // On met à jour le lobbyCode local pour permettre la réception des messages
     setGame(prev => ({ ...prev, lobbyCode: normalized }));
     setRole('player');
