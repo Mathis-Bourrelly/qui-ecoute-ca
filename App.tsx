@@ -34,7 +34,7 @@ const App: React.FC = () => {
         <>
           {game.status === 'setup' && <AdminLobby submissions={submissions} game={game} onStart={logic.startGame} setTimer={logic.setRoundTimer} />}
           {game.status === 'playing' && <AdminGameView game={game} onNext={logic.nextTrack} resetGame={logic.resetGame} />}
-          {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} scores={scores} totalTracks={(game.shuffledPlaylist || []).length || submissions.length} />}
+          {game.status === 'finished' && <FinishedView role={role} onRestart={logic.resetGame} scores={scores} totalTracks={(game.shuffledPlaylist || []).length || submissions.length} />}
         </>
       ) : (
         <>
@@ -47,7 +47,7 @@ const App: React.FC = () => {
             />
           )}
           {game.status === 'playing' && <PlayerVotingView game={game} playerName={playerName} onVote={logic.handleVote} />}
-          {game.status === 'finished' && <FinishedView onRestart={logic.resetGame} scores={scores} totalTracks={(game.shuffledPlaylist || []).length || submissions.length} />}
+          {game.status === 'finished' && <FinishedView role={role} onRestart={logic.resetGame} scores={scores} totalTracks={(game.shuffledPlaylist || []).length || submissions.length} />}
         </>
       )}
     </Layout>
