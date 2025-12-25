@@ -39,15 +39,28 @@ export const useGameLogic = () => {
 
   const wsClientRef = useRef<ReturnType<typeof createWebSocketClient> | null>(null);
   const gameRef = useRef<GameState>(game);
+  const roleRef = useRef<UserRole>(role);
+  const playerNameRef = useRef<string>(playerName);
 
   // Synchronisation de la ref pour l'utiliser dans les callbacks WebSocket (évite le stale closure)
   useEffect(() => {
     gameRef.current = game;
   }, [game]);
 
+  useEffect(() => { roleRef.current = role; }, [role]);
+  useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
+
   // Initialisation du WebSocket
   useEffect(() => {
     wsClientRef.current = createWebSocketClient({
+      onOpen: () => {
+        // If we were previously a player, announce ourselves again on reconnect
+        const name = playerNameRef.current;
+        const lobby = (gameRef.current?.lobbyCode || '').toString().trim().toUpperCase();
+        if (roleRef.current === 'player' && name && lobby) {
+          wsClientRef.current?.send({ type: 'participant:joined', payload: { name, lobbyCode: lobby } });
+        }
+      },
       onMessage: (msg: WSMessage) => {
         try {
           if (!msg || !msg.type) return;
@@ -89,6 +102,22 @@ export const useGameLogic = () => {
                 ...prev,
                 participants: Array.from(new Set([...(prev.participants || []), sub.senderName]))
               }));
+              break;
+            }
+
+            case 'submission:bulk': {
+              const { lobbyCode: bLobby, submissions: subs } = msg.payload as any;
+              if (bLobby?.toUpperCase() !== currentLobby) return;
+              if (Array.isArray(subs)) {
+                setSubmissions(subs);
+              }
+              break;
+            }
+
+            case 'votes:bulk': {
+              const { lobbyCode: vLobby, votes: bulkVotes } = msg.payload as any;
+              if (vLobby?.toUpperCase() !== currentLobby) return;
+              setGame(prev => ({ ...prev, votes: bulkVotes || {} }));
               break;
             }
 
